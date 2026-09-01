@@ -1,59 +1,182 @@
-# PROJECT_CONTEXT.md — read this first, every session, before touching code
+# PROJECT_CONTEXT.md
 
-If you are an AI coding tool (Cursor, Claude Code, Copilot, etc.) picking this project up —
-read this file and BACKEND_SPEC.md (if you're on the backend track) and stop there.
-You do not need to re-read the whole repo to be useful. This file is kept short and current
-on purpose so a tool switch never costs a full re-scan.
+Read this first before touching the project.
 
 ## What this project is
-AIIA Clinical Trials Dashboard (SIH PS 26046) — a real-time CTMS dashboard for Ayurveda
-clinical trials: study tracking, KPIs/alerts, AE/SAE safety reporting with regulatory
-deadlines, role-based access, an immutable audit trail, and one narrow AI feature.
-Built for a 7-day hackathon by a 3-person team. Strategy: every screen looks complete;
-only the pieces judges will actually test have real logic behind them (see "locked-in
-decisions" below).
 
-## Team & ownership boundaries — don't cross these without asking in the group chat
-- **Person A** — `/frontend` (Next.js dashboards). Owns that folder only.
-- **Person B (you)** — `/backend` (Supabase: schema, RLS, RPC functions, alerts logic)
-  and the Supabase project itself. Owns that folder + the DB.
-- **Person C** — `/ai` (embeddings, RAG feature, synthetic seed data). Owns that folder.
+AIIA Clinical Trials Dashboard (SIH PS 26046) — a clinical-trial management
+dashboard for Ayurveda trials.
 
-Each folder has its own dependencies (own package.json / venv / lockfile). The only
-shared files are this one, `schema.sql`, and `BACKEND_SPEC.md`.
+The system handles:
+- study/trial tracking
+- KPIs and alerts
+- AE/SAE safety reporting and deadlines
+- role-based access
+- immutable audit logging
+- one narrow AI feature
 
-## Locked-in decisions — do not relitigate these mid-build
-- DB: Postgres via **Supabase** (chosen for free RLS-based RBAC + pgvector + auth).
-- Frontend: Next.js + Tailwind + shadcn/ui.
-- There is **no separate custom REST server** — Supabase's PostgREST layer generates
-  the API directly from tables/views/RLS. "Backend work" = schema + policies + Postgres
-  functions, not route handlers.
-- Roles enum: `principal_investigator`, `study_coordinator`, `monitor`,
-  `ethics_committee`, `pharmacovigilance`, `admin`, `regulator_readonly`.
-- AE/SAE deadline: 24h for serious, 15 days otherwise — **placeholder**, confirm the
-  real figure before it's presented to judges.
+This is a 3-person, 7-day hackathon project.
 
-## Status snapshot — update this section, keep the changelog below append-only
-- [x] Core schema written & tested against a real Postgres instance (`schema.sql`):
-      studies, sites, subjects, visits, adverse_events (with deadline trigger),
-      audit_log (immutable), study_kpis view, guideline_chunks, meddra_terms.
-- [ ] RLS policies for all 7 roles (only 3 done so far — see BACKEND_SPEC.md gap note)
-- [ ] `study_alerts` view (ethics renewal / overdue SAE / enrollment lag)
-- [ ] Auth sign-up → profiles row auto-creation
-- [ ] Frontend dashboards
-- [ ] AI feature (MedDRA coding assist or compliance chatbot — not yet chosen)
+## Team ownership
 
-## The contract that must not break
-Frontend and the AI script both talk to Supabase directly via the JS/Python client —
-they depend on exact table names, column names, and RPC function signatures.
-The full contract lives in `BACKEND_SPEC.md`. If you rename or restructure anything
-in the DB, update that file in the same commit.
+- Person A — `/frontend` — React frontend/UI
+- Person B — `/backend` — Supabase database, RLS, RPCs, alerts
+- Person C — `/ai` — AI, embeddings, RAG, seed/demo data
 
-## Where the deeper docs live
-- `schema.sql` — full DB schema, already tested.
-- `BACKEND_SPEC.md` — Person B's detailed spec + the frontend/AI contract.
-- `AIIA_CTMS_Team_Roadmap.pdf` — original plain-English explainer + 7-day plan for all 3 people.
+Do not modify another person's folder without discussing it first.
 
-## Changelog (append only, newest entry on top)
-- 2026-09-01 — schema.sql created and verified against a real Postgres instance
-  (AE deadline trigger, KPI view, and audit log all confirmed working end to end).
+## Architecture
+
+Database: PostgreSQL through Supabase.
+
+Authentication: Supabase Auth.
+
+Security: PostgreSQL Row-Level Security (RLS).
+
+There is NO separate Express/FastAPI REST server.
+
+Frontend and AI communicate directly with Supabase using the JS/Python client.
+
+Backend work means:
+- database schema
+- RLS policies
+- database views
+- PostgreSQL functions/RPCs
+- authentication triggers
+
+## Roles
+
+- principal_investigator
+- study_coordinator
+- monitor
+- ethics_committee
+- pharmacovigilance
+- admin
+- regulator_readonly
+
+## Important database objects
+
+Tables:
+- profiles
+- studies
+- sites
+- subjects
+- visits
+- adverse_events
+- audit_log
+- guideline_chunks
+- meddra_terms
+
+Views:
+- study_kpis
+- study_alerts (pending)
+
+RPC:
+- mark_ae_reported (pending)
+
+## Current backend status
+
+DONE:
+- Core database schema
+- Supabase Auth
+- Signup → profiles trigger
+- Default signup role = study_coordinator
+- AE/SAE deadline trigger
+- Immutable audit log
+- study_kpis view
+- study_kpis security_invoker
+- RLS enabled on all required tables
+- Role/site/study isolation tested with real test data
+
+PENDING:
+- study_alerts view
+- mark_ae_reported RPC
+- Final JS-client authentication/RLS testing
+- Final API contract check with Person A
+- Frontend integration
+- AI integration
+
+## KPI data
+
+The frontend does NOT need a custom KPI API route.
+
+Use:
+
+supabase.from('study_kpis').select('*')
+
+The database view calculates:
+- enrollment percentage
+- deviation count
+- open AE count
+- overdue SAE count
+
+RLS controls which studies the logged-in user can see.
+
+## Alerts
+
+The planned `study_alerts` view will provide:
+- ethics renewal alerts
+- overdue SAE alerts
+- enrollment-related alerts
+
+Frontend will query it directly through Supabase.
+
+## AE/SAE
+
+When an AE is inserted, the database automatically calculates:
+
+- serious AE → 24-hour deadline
+- non-serious AE → 15-day deadline
+
+These values are currently demo placeholders and must be verified before being presented as legal/regulatory facts.
+
+`mark_ae_reported` will be the safe atomic action for marking an AE as reported.
+
+## Frontend contract
+
+Person A should use the exact database names and fields from BACKEND_SPEC.md.
+
+Main calls include:
+- Auth login
+- profiles → role
+- study_kpis → dashboard KPIs
+- study_alerts → alerts
+- studies → study details
+- adverse_events → create AE
+- mark_ae_reported RPC
+- audit_log → admin/regulator view
+
+Do not rename database tables or columns without telling the team.
+
+## AI contract
+
+Person C may use:
+- adverse_events.description
+- guideline_chunks
+- meddra_terms
+
+The AI feature should use synthetic/demo data only unless the team explicitly agrees otherwise.
+
+## Demo goal
+
+The final demo should show:
+
+Company/Admin
+→ create/manage a trial
+→ assign users/sites
+→ add subjects
+→ record visits
+→ record AE/SAE
+→ automatic deadlines/alerts
+→ role-based dashboard
+→ KPIs and graphs
+
+The frontend should look complete, but only the agreed core features need real backend logic.
+
+## Important rule
+
+Do not invent a new backend architecture.
+
+Use Supabase Auth + PostgreSQL + RLS + Views + RPCs.
+
+For deeper backend details, read BACKEND_SPEC.md.
