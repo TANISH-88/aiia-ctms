@@ -14,6 +14,8 @@ import {
   clearAuthError,
 } from "../state/authSlice";
 
+import { clearUser } from "../../user/state/userSlice";
+
 export const useAuth = () => {
   const dispatch = useDispatch();
 
@@ -26,9 +28,6 @@ export const useAuth = () => {
     error,
   } = useSelector((state) => state.auth);
 
-  /*
-   * LOGIN
-   */
   const login = async (email, password) => {
     dispatch(loginStart());
 
@@ -56,9 +55,6 @@ export const useAuth = () => {
     }
   };
 
-  /*
-   * LOGOUT
-   */
   const logout = async () => {
     dispatch(setLoading(true));
 
@@ -66,6 +62,7 @@ export const useAuth = () => {
       await logoutApi();
 
       dispatch(logoutSuccess());
+      dispatch(clearUser());
     } catch (error) {
       const message =
         error?.message || "Unable to logout";
@@ -78,9 +75,6 @@ export const useAuth = () => {
     }
   };
 
-  /*
-   * CLEAR AUTH ERROR
-   */
   const clearError = () => {
     dispatch(clearAuthError());
   };

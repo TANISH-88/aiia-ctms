@@ -8,7 +8,7 @@ const footerColumns = [
       "Electronic Clinical Outcome Assessments (eCOA)",
       "eConsent",
       "Decentralized Clinical Trials (DCT)",
-      "Castor Catalyst",
+      "AI Data Extraction",
       "Real-World Evidence",
       "Data Management",
       "Professional Services",
@@ -30,7 +30,7 @@ const footerColumns = [
     ],
   },
   {
-    title: "Why Castor",
+    title: "AIIA Resources",
     links: [
       "Comparisons & Competition",
       "EDC Software Comparison",
@@ -42,14 +42,14 @@ const footerColumns = [
       "Competitor pages",
       "Resources",
       "Articles",
-      "Castor Academy",
+      "Training & Certification",
     ],
   },
   {
     title: "Company",
     links: [
       "About Us",
-      "Castor in Clinical Research",
+      "Clinical Research Excellence",
       "AI in Clinical Trials",
       "Careers",
       "News",
@@ -72,7 +72,7 @@ const Footer = () => {
           <h3 className="max-w-[520px] text-2xl font-medium leading-tight tracking-[-0.04em] text-black">
             Stay up to date with the{" "}
             <span className="text-[#4b5ae1]">latest</span>
-            <span className="block">from Castor!</span>
+            <span className="block">from AIIA-CTMS!</span>
           </h3>
 
           <div className="grid w-full max-w-[600px] gap-4 md:grid-cols-2">

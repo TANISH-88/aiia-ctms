@@ -1,39 +1,41 @@
 import { useLocation, useNavigate } from "react-router-dom";
+import { useEffect } from "react";
+import { useUser } from "../features/user/hooks/useUser";
 
 const sections = [
   {
     label: "MAIN",
     items: [
-      ["Dashboard", "/dashboard", "grid"],
-      ["Clinical Trials", "/clinical-trials", "clipboard"],
-      ["Participants", "/participants", "users"],
-      ["Study", "/study", "file"],
-      ["Sites", null, "pin"],
-      ["Protocols", null, "book"],
+      ["Dashboard", "/dashboard", "grid", ["admin", "study_coordinator", "ethics_committee", "principal_investigator"]],
+      ["Clinical Trials", "/clinical-trials", "clipboard", ["admin", "study_coordinator", "principal_investigator"]],
+      ["Participants", "/participants", "users", ["admin", "study_coordinator", "principal_investigator"]],
+      ["Study", "/study", "file", ["admin", "study_coordinator"]],
+      ["Sites", null, "pin", ["admin"]],
+      ["Protocols", null, "book", ["admin", "study_coordinator"]],
     ],
   },
   {
     label: "COMPLIANCE",
     items: [
-      ["Ethics Committee", null, "check"],
-      ["CTRI", null, "landmark"],
-      ["Audit Trail", null, "history"],
+      ["Study Submissions", "/ethics/submissions", "check", ["admin", "ethics_committee", "principal_investigator"]],
+      ["CTRI", null, "landmark", ["admin"]],
+      ["Audit Trail", "/audit-trail", "history", ["admin"]],
     ],
   },
   {
     label: "SAFETY",
     items: [
-      ["Pharmacovigilance", null, "shield"],
-      ["Adverse Events", null, "alert"],
-      ["Safety Signals", null, "activity"],
+      ["Pharmacovigilance", null, "shield", ["admin"]],
+      ["Adverse Events", "/adverse-events", "alert", ["admin", "study_coordinator", "ethics_committee", "principal_investigator"]],
+      ["Safety Signals", null, "activity", ["admin"]],
     ],
   },
   {
     label: "DATA",
     items: [
-      ["Analytics", null, "chart"],
-      ["FHIR and CDISC", null, "database"],
-      ["Data Export", null, "download"],
+      ["Analytics", null, "chart", ["admin"]],
+      ["FHIR and CDISC", null, "database", ["admin"]],
+      ["Data Export", null, "download", ["admin"]],
     ],
   },
 ];
@@ -84,6 +86,18 @@ export default function Sidebar({
 }) {
   const location = useLocation();
   const navigate = useNavigate();
+  const {
+    user: profile,
+    loading: profileLoading,
+    initialized: profileInitialized,
+    loadUser,
+  } = useUser();
+
+  useEffect(() => {
+    if (!profile && !profileLoading && !profileInitialized) {
+      loadUser().catch(() => {});
+    }
+  }, [profile, profileLoading, profileInitialized, loadUser]);
 
   const handleNavigate = (path) => {
     if (!path) {
@@ -99,7 +113,16 @@ export default function Sidebar({
       className={`fixed inset-x-0 top-22 bottom-0 left-0 z-70 flex w-66 flex-col border-r border-slate-200 bg-white transition-transform duration-300 lg:static lg:inset-y-0 lg:z-auto lg:translate-x-0 lg:transition-[width] lg:duration-300 ${isMobileOpen ? "translate-x-0" : "-translate-x-full"} ${collapsed ? "lg:w-19" : "lg:w-66"}`}
     >
       <nav className="min-h-0 flex-1 overflow-y-auto px-3 py-5">
-        {sections.map((section) => (
+        {sections.map((section) => {
+          const items = section.items.filter(([, , , roles]) =>
+            roles.includes(profile?.role),
+          );
+
+          if (items.length === 0) {
+            return null;
+          }
+
+          return (
           <div key={section.label} className="mb-6 last:mb-0 ">
             <p
               className={`mb-2 px-3 text-[10px] font-semibold tracking-[0.16em] text-slate-400 ${collapsed ? "lg:hidden" : ""}`}
@@ -107,7 +130,7 @@ export default function Sidebar({
               {section.label}
             </p>
             <div className="grid gap-1">
-              {section.items.map(([label, path, icon]) => {
+              {items.map(([label, path, icon]) => {
                 const active =
                   path &&
                   (location.pathname === path ||
@@ -130,7 +153,8 @@ export default function Sidebar({
               })}
             </div>
           </div>
-        ))}
+          );
+        })}
       </nav>
 
       <button

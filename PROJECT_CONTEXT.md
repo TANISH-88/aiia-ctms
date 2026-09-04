@@ -69,10 +69,10 @@ Tables:
 
 Views:
 - study_kpis
-- study_alerts (pending)
+- study_alerts
 
 RPC:
-- mark_ae_reported (pending)
+- mark_ae_reported
 
 ## Current backend status
 
@@ -89,10 +89,6 @@ DONE:
 - Role/site/study isolation tested with real test data
 
 PENDING:
-- study_alerts view
-- mark_ae_reported RPC
-- Final JS-client authentication/RLS testing
-- Final API contract check with Person A
 - Frontend integration
 - AI integration
 

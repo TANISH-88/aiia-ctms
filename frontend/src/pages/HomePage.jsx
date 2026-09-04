@@ -25,11 +25,11 @@ const featureData = {
         "Create effortless experiences for patients with an all-in-one solution to remotely recruit, screen and enroll patients from the comfort of their home.",
     },
     {
-      title: "Catalyst",
+      title: "AI Data Extraction",
       icon: "globe",
       accentClass: "bg-[#fce6ef] text-[#0d2f72]",
       description:
-        "Castor Catalyst uses AI to turn source documents and EHR data into structured, audit-ready records in your EDC. A human reviewer confirms every result before it’s committed.",
+        "AIIA-CTMS uses AI to turn source documents and EHR data into structured, audit-ready records in your EDC. A human reviewer confirms every result before it's committed.",
     },
   ],
   industry: [
@@ -59,21 +59,21 @@ const featureData = {
       icon: "cap",
       accentClass: "bg-[#fce6ef] text-[#0d2f72]",
       description:
-        "Join the community of thousands of researchers across the world who are using Castor’s user-friendly and affordable software for their studies.",
+        "Join thousands of researchers using AIIA-CTMS's user-friendly and powerful platform for their studies.",
     },
   ],
 };
 
-const whyCastorData = [
+const whyAiiaCitmsData = [
   {
     question: "Our core technologies power your research",
     answer:
-      "Unlock the full potential of your studies with Castor's powerful yet intuitive core technologies (EDC, eCOA/ePRO, eConsent, and Catalyst).",
+      "Unlock the full potential of your studies with AIIA-CTMS's powerful yet intuitive core technologies (EDC, eCOA/ePRO, eConsent, and AI data extraction).",
   },
   {
     question: "Not Just Software, A Full-Service Partner",
     answer:
-      "From cutting-edge technology to expert consultancy, Castor empowers biopharma, CROs, and medical device companies to navigate trial complexities, drive efficiency, and deliver results.",
+      "From cutting-edge technology to expert consultancy, AIIA-CTMS empowers biopharma, CROs, and medical device companies to navigate trial complexities, drive efficiency, and deliver results.",
   },
   {
     question: "Proven outcomes at scale",
@@ -83,7 +83,7 @@ const whyCastorData = [
   {
     question: "AI data extraction, built in",
     answer:
-      "On top of the proven platform, Castor Catalyst reads source documents and proposes structured eCRF values, accepted by a human before they enter the record.",
+      "With AI data extraction, AIIA-CTMS reads source documents and proposes structured eCRF values, accepted by a human before they enter the record.",
   },
 ];
 
@@ -142,7 +142,7 @@ const HomePage = () => {
             Smarter Research. Real-World Impact.
           </h1>
           <p className="lg:text-lg md:text-xl text-lg">
-            From clinical trials to real-world evidence studies, Castor delivers
+            From clinical trials to real-world evidence studies, AIIA-CTMS delivers
             the tools you need to simplify workflows and accelerate
             breakthroughs. Build, manage, and adapt your research effortlessly
             with our powerful, scalable platform designed for the future of
@@ -158,7 +158,7 @@ const HomePage = () => {
         <div className="up-block flex lg:flex-row flex-col w-full max-w-[1200px] items-center justify-between gap-8">
           <div className="left-block lg:w-[60%] w-full lg:text-[1.5rem] text-2xl font-medium leading-tight text-black lg:text-start text-center">
             Every trial is different. See how
-            <span className="block">Castor can help you</span>
+            <span className="block">AIIA-CTMS can help you</span>
           </div>
 
           <div className="right-block-slider lg:w-[40%] w-full flex items-center gap-2 rounded-[5px] bg-[#eaf1fa] p-2 shadow-[inset_0_0_0_1px_rgba(13,47,114,0.1)]">
@@ -247,7 +247,7 @@ const HomePage = () => {
               </div>
 
               <div className="space-y-8 lg:w-3/4 ">
-                {whyCastorData.map((item) => (
+                {whyAiiaCitmsData.map((item) => (
                   <div key={item.question} className="flex items-start gap-4">
                     <span className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#d9f5ee] text-[#12a57b]">
                       <svg
@@ -294,7 +294,7 @@ const HomePage = () => {
             See Why Teams Choose US
           </button>
           <button className="bg-[#1f67e2] text-white py-2 px-4 rounded-md hover:bg-[#16086f]">
-            See Castor Catalyst
+            Explore AI Features
           </button>
         </div>
       </div>
@@ -376,7 +376,7 @@ const HomePage = () => {
               </h1>
               <p className="text-base text-slate-600">
                 How one medical device team (MMI, PRIMO study) grew enrollment
-                on Castor, using electronic consent to remove the sign-up
+                using AIIA-CTMS, with electronic consent to remove the sign-up
                 bottleneck.
               </p>
               <button className="bg-[#4b5ae1] text-white py-2 px-4 rounded-md hover:bg-[#3a49c5]">

@@ -1,10 +1,16 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
+import { useUser } from "../../user/hooks/useUser";
+import {
+  getRoleDashboardPath,
+  needsProfileSetup,
+} from "../../user/api/userAPI";
 
 export function LoginPage() {
   const navigate = useNavigate();
-  const { login, loading } = useAuth();
+  const { login } = useAuth();
+  const { loadUser } = useUser();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState({});
@@ -34,14 +40,22 @@ export function LoginPage() {
 
     try {
       await login(email, password);
+      const profile = await loadUser();
 
-      navigate("/dashboard", {
+      if (needsProfileSetup(profile)) {
+        navigate("/auth/setup", { replace: true });
+        return;
+      }
+
+      navigate(getRoleDashboardPath(profile?.role), {
         replace: true,
       });
     } catch (error) {
       setErrors({
         form: error?.message || "Invalid email or password",
       });
+    } finally {
+      setIsLoggingIn(false);
     }
   };
 

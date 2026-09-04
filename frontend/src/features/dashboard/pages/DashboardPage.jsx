@@ -1,8 +1,10 @@
 import { useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/hooks/useAuth";
 import { useDashboard } from "../hooks/useDashboard";
 
 export function DashboardPage() {
+  const navigate = useNavigate();
   const {
     data: dashboardData,
     loading: dashboardLoading,
@@ -195,7 +197,7 @@ export function DashboardPage() {
             </div>
 
             {/* Open AEs */}
-            <div className="rounded-[5px] border border-slate-200 bg-white p-5 shadow-[0_1px_3px_rgba(15,23,42,0.03)]">
+            <button type="button" onClick={() => navigate("/adverse-events?filter=open")} className="rounded-[5px] border border-slate-200 bg-white p-5 text-left shadow-[0_1px_3px_rgba(15,23,42,0.03)] transition hover:border-[#d48b16]">
               <div className="flex items-center justify-between">
                 <p className="text-sm text-slate-500">Open AEs</p>
 
@@ -207,10 +209,10 @@ export function DashboardPage() {
               </p>
 
               <p className="mt-2 text-xs text-slate-400">Adverse events</p>
-            </div>
+            </button>
 
             {/* Overdue SAEs */}
-            <div className="rounded-[5px] border border-slate-200 bg-white p-5 shadow-[0_1px_3px_rgba(15,23,42,0.03)]">
+            <button type="button" onClick={() => navigate("/adverse-events?filter=overdue")} className="rounded-[5px] border border-slate-200 bg-white p-5 text-left shadow-[0_1px_3px_rgba(15,23,42,0.03)] transition hover:border-[#d93c42]">
               <div className="flex items-center justify-between">
                 <p className="text-sm text-slate-500">Overdue SAEs</p>
 
@@ -222,7 +224,7 @@ export function DashboardPage() {
               </p>
 
               <p className="mt-2 text-xs text-slate-400">Requires attention</p>
-            </div>
+            </button>
 
             {/* Deviations */}
             <div className="rounded-[5px] border border-slate-200 bg-white p-5 shadow-[0_1px_3px_rgba(15,23,42,0.03)]">

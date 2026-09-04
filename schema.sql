@@ -21,6 +21,7 @@ create table profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   full_name text not null,
   role user_role not null,
+  profile_completed boolean not null default false,
   created_at timestamptz not null default now()
 );
 
@@ -221,6 +222,12 @@ create policy ae_write on adverse_events for insert with check (
     and p.role in ('study_coordinator','pharmacovigilance','admin'))
 );
 
+create policy subjects_read on subjects for select using (auth.role() = 'authenticated');
+create policy subjects_write on subjects for insert with check (
+  exists (select 1 from profiles p where p.id = auth.uid()
+    and p.role in ('principal_investigator','study_coordinator','admin'))
+);
+
 create policy audit_read on audit_log for select using (
   exists (select 1 from profiles p where p.id = auth.uid()
     and p.role in ('admin','regulator_readonly'))
@@ -231,3 +238,72 @@ create policy audit_read on audit_log for select using (
 -- tighten "studies_read" / "ae_read" further if you want investigators to
 -- see only their own study rather than every study (join through pi_id or
 -- site_id in the USING clause).
+
+
+-- =========================================================
+-- 2026-09-04: Phase 6 - Reconciled live database objects
+-- =========================================================
+
+-- ---------- New user profile trigger ----------
+
+create or replace function handle_new_user() returns trigger as $$
+declare
+  v_name text;
+begin
+  v_name := nullif(btrim(coalesce(new.raw_user_meta_data->>'full_name', '')), '');
+
+  insert into profiles (id, full_name, role, profile_completed)
+  values (
+    new.id,
+    coalesce(v_name, 'Pending Setup'),
+    'study_coordinator',
+    -- Every newly created user must complete first-login setup
+    false
+  );
+  return new;
+end;
+$$ language plpgsql security definer;
+
+create trigger on_auth_user_created
+after insert on auth.users
+for each row execute function handle_new_user();
+
+-- ---------- Study alerts ----------
+
+create or replace view study_alerts as
+select study_id, alert_type, message, severity, due_at from (
+  select id as study_id,
+    'ec_renewal_due' as alert_type,
+    'Ethics Committee approval renewal due' as message,
+    'warning' as severity,
+    ec_approval_date + interval '1 year' as due_at
+  from studies
+  where ec_approval_date is not null
+
+  union all
+
+  select study_id,
+    'overdue_sae',
+    'Serious Adverse Event report overdue',
+    'critical',
+    regulatory_deadline
+  from adverse_events
+  where is_serious
+    and status = 'open'
+    and regulatory_deadline < now()
+) t
+where due_at < now() + interval '30 days';
+
+alter view study_alerts set (security_invoker = true);
+
+-- ---------- Mark AE as reported ----------
+
+create or replace function mark_ae_reported(p_ae_id uuid)
+returns adverse_events as $$
+  update adverse_events
+  set
+    status = 'reported_to_regulator',
+    reported_to_regulator_at = now()
+  where id = p_ae_id
+  returning *;
+$$ language sql security definer;

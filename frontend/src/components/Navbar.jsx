@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../features/auth/hooks/useAuth";
+import ApplicationModal from "./ApplicationModal";
 
 const menuPanels = {
-  "Why Castor": {
+  "About AIIA-CTMS": {
     left: [
       {
         title: "Platform overview",
@@ -21,7 +22,7 @@ const menuPanels = {
     ],
     right: [
       {
-        title: "Why teams choose Castor",
+        title: "Why teams choose AIIA-CTMS",
         description:
           "One connected platform for every clinical workflow.",
       },
@@ -34,7 +35,7 @@ const menuPanels = {
     buttonText: "Explore platform",
   },
 
-  "Platform & Services": {
+  "Platform & Solutions": {
     left: [
       {
         title: "EDC",
@@ -55,7 +56,7 @@ const menuPanels = {
           "Enroll and consent participants remotely or on site.",
       },
       {
-        title: "Catalyst",
+        title: "AI Data Extraction",
         description:
           "AI extracts source data and a human reviews everything.",
       },
@@ -77,7 +78,7 @@ const menuPanels = {
           "Translations, licensing, and device logistics managed for you",
       },
       {
-        title: "Castor Academy",
+        title: "Training & Certification",
         description:
           "Training & certification to help teams build studies with confidence",
       },
@@ -155,12 +156,12 @@ const menuPanels = {
       {
         title: "Use cases",
         description:
-          "See what teams automate and accelerate with Castor",
+          "See what teams automate and accelerate with AIIA-CTMS",
       },
       {
         title: "Direct to patient data retrieval",
         description:
-          "Patients share records, Catalyst extracts the source data",
+          "Patients share records, AI extracts the source data",
       },
       {
         title: "AI data extraction",
@@ -173,7 +174,7 @@ const menuPanels = {
           "Run decentralized and hybrid trials patients actually finish",
       },
       {
-        title: "Castor Essentials",
+        title: "AIIA Essentials",
         description:
           "Compliant studies for lean teams, live in weeks",
       },
@@ -215,7 +216,7 @@ const menuPanels = {
       },
     ],
     buttonText: "All therapeutic areas",
-    footerText: "See how Castor compares to others",
+    footerText: "See how AIIA-CTMS compares",
   },
 
   Resources: {
@@ -250,7 +251,7 @@ const menuPanels = {
       {
         title: "Platform & services",
         description:
-          "See the Castor platform and services in action",
+          "See the AIIA-CTMS platform and services in action",
       },
       {
         title: "Fact sheets",
@@ -272,7 +273,7 @@ const menuPanels = {
       {
         title: "Case studies",
         description:
-          "Real results from teams running studies on Castor",
+          "Real results from teams running studies on AIIA-CTMS",
       },
       {
         title: "MedTech",
@@ -298,12 +299,12 @@ const menuPanels = {
       {
         title: "About us",
         description:
-          "The team and story behind the Castor platform",
+          "The team behind AIIA-CTMS",
       },
       {
         title: "News",
         description:
-          "The latest Castor product and company news",
+          "AIIA-CTMS product and company news",
       },
       {
         title: "Careers",
@@ -320,19 +321,19 @@ const menuPanels = {
       {
         title: "Team",
         description:
-          "Meet the people building the Castor platform",
+          "Meet the AIIA-CTMS team",
       },
     ],
     right: [
       {
         title: "Events",
         description:
-          "Meet the Castor team in person",
+          "Meet the AIIA-CTMS team in person",
       },
       {
         title: "In-person events",
         description:
-          "Conferences and industry events where Castor exhibits",
+          "Conferences and industry events",
       },
     ],
     buttonText: "Meet the team",
@@ -369,7 +370,7 @@ const menuPanels = {
 
 const navMenus = [
   {
-    label: "Why Castor",
+    label: "About AIIA-CTMS",
     items: [
       {
         title: "Platform overview",
@@ -390,7 +391,7 @@ const navMenus = [
   },
 
   {
-    label: "Platform & Services",
+    label: "Platform & Solutions",
     items: [
       {
         title: "EDC",
@@ -530,6 +531,9 @@ const Navbar = () => {
   // NEW: account dropdown state
   const [isAccountOpen, setIsAccountOpen] = useState(false);
 
+  // Apply modal state
+  const [isApplyOpen, setIsApplyOpen] = useState(false);
+
   const navigate = useNavigate();
 
   // NEW: auth
@@ -609,6 +613,7 @@ const Navbar = () => {
   };
 
   return (
+    <>
     <header
       className={`sticky top-0 z-[60] overflow-visible border-b transition-all duration-300 ${
         isScrolled
@@ -965,6 +970,15 @@ const Navbar = () => {
 
           {/* DESKTOP AUTH / ACCOUNT */}
           <div className="hidden items-center gap-3 lg:flex">
+            {/* Apply button — always visible, opens public application modal */}
+            <button
+              type="button"
+              onClick={() => setIsApplyOpen(true)}
+              className="cursor-pointer rounded-[5px] border border-[#3d9673] bg-[#3d9673]/10 px-3 py-2 text-[1.05rem] font-semibold text-[#2a7358] transition hover:bg-[#3d9673]/20"
+            >
+              Apply
+            </button>
+
             {isAuthenticated ? (
               <div ref={accountRef} className="relative">
                 <button
@@ -1101,6 +1115,14 @@ const Navbar = () => {
             <div className="grid gap-2 pt-2">
               <button
                 type="button"
+                onClick={() => { setIsOpen(false); setIsApplyOpen(true); }}
+                className="rounded-xl border border-[#3d9673] bg-[#3d9673]/10 px-4 py-3 text-base font-semibold text-[#2a7358]"
+              >
+                Apply
+              </button>
+
+              <button
+                type="button"
                 onClick={() => navigate("/auth/login")}
                 className="rounded-xl border border-[#1b5ec7] bg-white/20 px-4 py-3 text-base font-semibold text-[#0f3f92]"
               >
@@ -1118,6 +1140,10 @@ const Navbar = () => {
         )}
       </div>
     </header>
+
+    {/* Public application modal — rendered outside the header so z-index stacks cleanly */}
+    {isApplyOpen && <ApplicationModal onClose={() => setIsApplyOpen(false)} />}
+    </>
   );
 };
 
