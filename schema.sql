@@ -697,35 +697,48 @@ grant execute on function public.review_ae_report(uuid, text, text) to authentic
 
 
 -- ---------------------------------------------------------
--- 9. resume_suspended_study(p_study_id uuid)   [UNVERIFIED/TODO]
+-- 9. resume_suspended_study(p_study_id uuid)   [VERIFIED LIVE]
 --
---    Defined in ae_report_workflow_migration.sql.
---    Confirmed NOT present on the live database as of 2026-09-05.
---    Uncomment and run when the EC resume-study feature is deployed.
+--    Verified live: tested 2026-09-05.
+--    EC rejection sets study status = 'suspended'.
+--    EC Resume Study sets study status = 'active'.
+--    Only the EC assigned to the study (ec_id = auth.uid()) can resume.
 -- ---------------------------------------------------------
 
--- create or replace function public.resume_suspended_study(
---   p_study_id uuid
--- ) returns studies as $$
--- declare
---   study_record studies;
--- begin
---   update studies
---   set status = 'active', updated_at = now()
---   where id = p_study_id
---     and status = 'suspended'
---     and ec_id = auth.uid();
---
---   if not found then
---     raise exception 'Study is not suspended or is not assigned to this Ethics Committee';
---   end if;
---
---   select * into study_record from studies where id = p_study_id;
---   return study_record;
--- end;
--- $$ language plpgsql security definer set search_path = public;
---
--- grant execute on function public.resume_suspended_study(uuid) to authenticated;
+drop function if exists public.resume_suspended_study(uuid);
+
+create or replace function public.resume_suspended_study(p_study_id uuid)
+returns public.studies
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  study_record public.studies;
+begin
+  if auth.uid() is null then
+    raise exception 'Not authenticated';
+  end if;
+
+  update public.studies
+  set
+    status     = 'active',
+    updated_at = now()
+  where id     = p_study_id
+    and status = 'suspended'
+    and ec_id  = auth.uid()
+  returning * into study_record;
+
+  if study_record.id is null then
+    raise exception 'Study is not suspended or is not assigned to this Ethics Committee';
+  end if;
+
+  return study_record;
+end;
+$$;
+
+revoke all on function public.resume_suspended_study(uuid) from public;
+grant execute on function public.resume_suspended_study(uuid) to authenticated;
 
 
 -- ---------------------------------------------------------
