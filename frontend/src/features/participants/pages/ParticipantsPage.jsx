@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { getParticipantsApi } from "../api/participantsAPI";
 import { useUser } from "../../user/hooks/useUser";
+import { getDemoAbhaId } from "../../interoperability/utils/abha";
 
 export default function ParticipantsPage() {
   const { user: profile } = useUser();
@@ -85,6 +86,7 @@ export default function ParticipantsPage() {
                     "Study ID",
                     "Site ID",
                     "Enrollment Date",
+                    "ABHA ID (demo)",
                   ].map((heading) => (
                     <th
                       key={heading}
@@ -115,6 +117,17 @@ export default function ParticipantsPage() {
                     </td>
                     <td className="px-5 py-4 text-sm text-slate-600">
                       {participant.enrollment_date || "Not enrolled"}
+                    </td>
+                    <td className="px-5 py-4">
+                      <div className="flex flex-col gap-1">
+                        <span className="font-mono text-xs text-slate-600">
+                          {getDemoAbhaId(participant.id)}
+                        </span>
+                        <span className="inline-flex items-center rounded-full bg-[#dffaf2] px-2 py-0.5 text-xs font-medium text-[#0d7559]">
+                          Linked to ABDM ✓
+                        </span>
+                      </div>
+                      {/* DEMO ONLY: ABHA/ABDM linkage is visual placeholder data; no ABDM service is connected. */}
                     </td>
                   </tr>
                 ))}

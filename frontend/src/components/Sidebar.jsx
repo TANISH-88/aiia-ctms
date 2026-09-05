@@ -18,7 +18,7 @@ const sections = [
     label: "COMPLIANCE",
     items: [
       ["Study Submissions", "/ethics/submissions", "check", ["admin", "ethics_committee", "principal_investigator"]],
-      ["CTRI", null, "landmark", ["admin"]],
+      ["CTRI", "/interoperability", "landmark", ["admin"]],
       ["Audit Trail", "/audit-trail", "history", ["admin"]],
     ],
   },
@@ -34,7 +34,7 @@ const sections = [
     label: "DATA",
     items: [
       ["Analytics", null, "chart", ["admin"]],
-      ["FHIR and CDISC", null, "database", ["admin"]],
+      ["FHIR and CDISC", "/interoperability", "database", ["admin"]],
       ["Data Export", null, "download", ["admin"]],
     ],
   },

@@ -23,6 +23,7 @@ import StudySubmissionsPage from "../features/ethicsCommittee/pages/StudySubmiss
 import ReviewStudyPage from "../features/ethicsCommittee/pages/ReviewStudyPage";
 import AdverseEventsPage from "../features/adverseEvents/pages/AdverseEventsPage";
 import AdverseEventDetailPage from "../features/adverseEvents/pages/AdverseEventDetailPage";
+import InteroperabilityPage from "../features/interoperability/pages/InteroperabilityPage";
 
 export const router = createBrowserRouter([
   {
@@ -153,6 +154,7 @@ export const router = createBrowserRouter([
                     children: [
                       { path: "/alerts", element: <AlertsPage /> },
                       { path: "/audit-trail", element: <AuditLogPage /> },
+                      { path: "/interoperability", element: <InteroperabilityPage /> },
                     ],
                   },
                 ],

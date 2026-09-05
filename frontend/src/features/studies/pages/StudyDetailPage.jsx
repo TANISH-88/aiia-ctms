@@ -8,6 +8,10 @@ import {
   createStudySubmissionApi,
   getStudySubmissionApi,
 } from "../../studySubmissions/api/studySubmissionsAPI";
+import { buildFhirBundle } from "../../interoperability/utils/fhirBundle";
+import { downloadSdtmDm } from "../../interoperability/utils/sdtmDm";
+import { getDemoAbhaId } from "../../interoperability/utils/abha";
+import FhirBundleModal from "../../interoperability/components/FhirBundleModal";
 
 export function StudyDetailPage() {
   const { id: studyId } = useParams();
@@ -28,6 +32,8 @@ export function StudyDetailPage() {
   const [submissionComment, setSubmissionComment] = useState("");
   const [submissionError, setSubmissionError] = useState(null);
   const [submittingStudy, setSubmittingStudy] = useState(false);
+  const [showFhirModal, setShowFhirModal] = useState(false);
+  const [fhirBundle, setFhirBundle] = useState(null);
   const {
     user: currentUser,
     loading: userLoading,
@@ -281,8 +287,21 @@ export function StudyDetailPage() {
               <div>
                 <dt className="font-medium text-slate-700">CTRI Number</dt>
                 <dd className="mt-1 text-slate-600">
-                  {study.ctri_number || "Not registered"}
+                  {study.ctri_number ? (
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-sm">{study.ctri_number}</span>
+                      <span className="inline-flex items-center rounded-full bg-[#dffaf2] px-2 py-0.5 text-xs font-medium text-[#0d7559]">
+                        Registered
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="text-slate-500">Not registered (demo placeholder)</span>
+                  )}
                 </dd>
+                {/* DEMO ONLY: CTRI sync status is static; no live CTRI API is connected. */}
+                {study.ctri_number && (
+                  <dd className="mt-1 text-xs text-slate-400">Last synced: 3 hours ago</dd>
+                )}
               </div>
               <div>
                 <dt className="font-medium text-slate-700">Principal Investigator</dt>
@@ -309,6 +328,62 @@ export function StudyDetailPage() {
                 <dd className="mt-1 text-slate-600">{study.end_date || "TBD"}</dd>
               </div>
             </dl>
+          </div>
+
+          {/* Interoperability */}
+          <div className="rounded-[5px] border border-slate-200 bg-white p-6 shadow-[0_1px_3px_rgba(15,23,42,0.03)]">
+            <h2 className="mb-4 text-lg font-semibold text-slate-900">
+              Interoperability
+              <span className="ml-2 text-xs font-normal text-amber-600 bg-amber-50 border border-amber-200 rounded px-2 py-0.5">
+                Demo Only
+              </span>
+            </h2>
+            <div className="space-y-3">
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const bundle = buildFhirBundle(study);
+                    setFhirBundle(bundle);
+                    setShowFhirModal(true);
+                  }}
+                  className="rounded-lg bg-[#1d5edb] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#174ec0]"
+                >
+                  View FHIR Bundle
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const bundle = buildFhirBundle(study);
+                    const json = JSON.stringify(bundle, null, 2);
+                    const blob = new Blob([json], { type: "application/json" });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = `AIIA_${study.id}_FHIR_Bundle.json`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                  }}
+                  className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                >
+                  Export FHIR Bundle
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => downloadSdtmDm(study)}
+                  className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                >
+                  Export SDTM Dataset (DM)
+                </button>
+              </div>
+              <p className="text-xs text-slate-400 mt-2">
+                {/* DEMO ONLY: This is a client-side sample FHIR R4 Bundle. No FHIR server or ABDM/FHIR API is connected. */}
+                {/* DEMO ONLY: SDTM DM dataset is generated client-side from synthetic/de-identified study data; no CDISC service is connected. */}
+                FHIR Bundle and SDTM DM are generated client-side from de-identified study data. No external APIs are connected.
+              </p>
+            </div>
           </div>
 
           {/* Sites */}
@@ -444,6 +519,10 @@ export function StudyDetailPage() {
                       <th className="px-4 py-2 text-left font-medium text-slate-700">
                         Enrollment Date
                       </th>
+                      <th className="px-4 py-2 text-left font-medium text-slate-700">
+                        ABHA ID
+                        <span className="ml-1 text-xs font-normal text-amber-600">(demo)</span>
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -457,6 +536,17 @@ export function StudyDetailPage() {
                         </td>
                         <td className="px-4 py-3">
                           {subject.enrollment_date || "Not enrolled"}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex flex-col gap-1">
+                            <span className="font-mono text-xs text-slate-600">
+                              {getDemoAbhaId(subject.id)}
+                            </span>
+                            <span className="inline-flex items-center rounded-full bg-[#dffaf2] px-2 py-0.5 text-xs font-medium text-[#0d7559]">
+                              Linked to ABDM ✓
+                            </span>
+                          </div>
+                          {/* DEMO ONLY: ABHA/ABDM linkage is visual placeholder data; no ABDM service is connected. */}
                         </td>
                       </tr>
                     ))}
@@ -565,6 +655,18 @@ export function StudyDetailPage() {
           </div>
         )}
       </div>
+
+      {/* FHIR Bundle Modal */}
+      {showFhirModal && fhirBundle && (
+        <FhirBundleModal
+          bundle={fhirBundle}
+          studyId={study.id}
+          onClose={() => {
+            setShowFhirModal(false);
+            setFhirBundle(null);
+          }}
+        />
+      )}
     </div>
   );
 }

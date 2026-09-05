@@ -54,7 +54,24 @@ export const getStudiesApi = async () => {
     throw new Error(error.message);
   }
 
-  return data || [];
+  // For each study, fetch related sites and subjects
+  const studiesWithRelations = await Promise.all(
+    (data || []).map(async (study) => {
+      const [sitesResult, subjectsResult] = await Promise.all([
+        supabase.from("sites").select("*").eq("study_id", study.id),
+        supabase.from("subjects").select("*").eq("study_id", study.id),
+      ]);
+
+      return {
+        ...study,
+        ethics_committee_id: study.ec_id ?? study.ethics_committee_id ?? null,
+        sites: sitesResult.data || [],
+        subjects: subjectsResult.data || [],
+      };
+    })
+  );
+
+  return studiesWithRelations;
 };
 
 export const getStudiesByStatusApi = async (status) => {
