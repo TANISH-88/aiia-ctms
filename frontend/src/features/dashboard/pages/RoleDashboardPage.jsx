@@ -2,6 +2,12 @@ import { useEffect } from "react";
 import { useUser } from "../../user/hooks/useUser";
 import { DashboardPage } from "./DashboardPage";
 import PIDashboardPage from "./PIDashboardPage";
+import StudyCoordinatorDashboardPage from "./StudyCoordinatorDashboardPage";
+import MonitorDashboardPage from "./MonitorDashboardPage";
+import EthicsCommitteeDashboardPage from "./EthicsCommitteeDashboardPage";
+import PharmacovigilanceDashboardPage from "./PharmacovigilanceDashboardPage";
+import AdminDashboardPage from "./AdminDashboardPage";
+import RegulatorDashboardPage from "./RegulatorDashboardPage";
 
 function formatRole(role) {
   if (!role) return "User";
@@ -65,12 +71,28 @@ export default function RoleDashboardPage() {
     return <PIDashboardPage />;
   }
 
-  if (
-    role === "admin" ||
-    role === "study_coordinator" ||
-    role === "ethics_committee"
-  ) {
-    return <DashboardPage />;
+  if (role === "study_coordinator") {
+    return <StudyCoordinatorDashboardPage />;
+  }
+
+  if (role === "monitor") {
+    return <MonitorDashboardPage />;
+  }
+
+  if (role === "ethics_committee") {
+    return <EthicsCommitteeDashboardPage />;
+  }
+
+  if (role === "pharmacovigilance") {
+    return <PharmacovigilanceDashboardPage />;
+  }
+
+  if (role === "admin") {
+    return <AdminDashboardPage />;
+  }
+
+  if (role === "regulator_readonly") {
+    return <RegulatorDashboardPage />;
   }
 
   return (
