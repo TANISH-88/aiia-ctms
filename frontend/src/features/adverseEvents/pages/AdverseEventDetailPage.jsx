@@ -8,6 +8,7 @@ import {
   submitAeReportApi,
 } from "../api/adverseEventsAPI";
 import { getStudyApi } from "../../studies/api/studiesAPI";
+import { getProfileByIdApi } from "../../user/api/userAPI";
 import { useUser } from "../../user/hooks/useUser";
 import { getAdverseEventTimerState } from "../utils/adverseEventTimer";
 
@@ -31,6 +32,7 @@ export default function AdverseEventDetailPage() {
   const [error, setError] = useState(null);
   const [now, setNow] = useState(0);
   const [report, setReport] = useState(null);
+  const [reviewerName, setReviewerName] = useState(null);
   const [reportComment, setReportComment] = useState("");
   const [reviewComment, setReviewComment] = useState("");
   const [showReportForm, setShowReportForm] = useState(false);
@@ -55,6 +57,23 @@ export default function AdverseEventDetailPage() {
       setLoading(false);
     }
   }, [id]);
+
+  // Resolve signer name from reviewed_by (same UUID as audit_log.changed_by).
+  // Prefer the already-loaded profile when the current user is the signer —
+  // avoids an extra network call on the common EC self-review path.
+  useEffect(() => {
+    if (!report?.reviewed_by) {
+      setReviewerName(null);
+      return;
+    }
+    if (profile?.id === report.reviewed_by && profile.full_name) {
+      setReviewerName(profile.full_name);
+      return;
+    }
+    getProfileByIdApi(report.reviewed_by)
+      .then((p) => setReviewerName(p?.full_name || null))
+      .catch(() => setReviewerName(null));
+  }, [report?.reviewed_by, profile?.id, profile?.full_name]);
 
   useEffect(() => {
     const initialLoad = window.setTimeout(() => loadEvent(), 0);
@@ -176,6 +195,8 @@ export default function AdverseEventDetailPage() {
                 <div><dt className="font-medium text-slate-700">Severity</dt><dd className="mt-1 capitalize text-slate-600">{event.severity}</dd></div>
                 <div><dt className="font-medium text-slate-700">Serious</dt><dd className="mt-1 text-slate-600">{event.is_serious ? "Yes" : "No"}</dd></div>
                 <div><dt className="font-medium text-slate-700">Study status</dt><dd className={`mt-1 capitalize font-medium ${studySuspended ? "text-red-600" : "text-slate-600"}`}>{study?.status || "Unavailable"}</dd></div>
+                <div><dt className="font-medium text-slate-700">MedDRA Term</dt><dd className="mt-1 text-slate-600">{event.meddra_term || "—"}</dd></div>
+                <div><dt className="font-medium text-slate-700">WHODrug Term</dt><dd className="mt-1 text-slate-600">{event.who_drug_term || "—"}</dd></div>
                 <div><dt className="font-medium text-slate-700">Regulatory deadline</dt><dd className="mt-1 text-slate-600">{event.regulatory_deadline ? new Date(event.regulatory_deadline).toLocaleString() : "No deadline recorded"}</dd></div>
                 <div><dt className="font-medium text-slate-700">Reporting timer</dt><dd className={`mt-1 font-semibold ${timerState.statusLabel === "Overdue" ? "text-red-600" : "text-[#1d5edb]"}`}>{timerState.timerLabel}</dd></div>
               </dl>
@@ -235,6 +256,24 @@ export default function AdverseEventDetailPage() {
                   )}
                 </dl>
               )}
+
+              {/* Electronic signature framing — uses reviewed_by / reviewed_at,
+                  which mirror audit_log.changed_by / changed_at written by the
+                  ae_reports audit trigger on APPROVE and REJECT. */}
+              {report &&
+                (report.status === "approved" || report.status === "rejected") &&
+                report.reviewed_by &&
+                report.reviewed_at && (
+                  <p className="mt-5 border-t border-slate-200 pt-4 text-sm italic text-slate-700">
+                    Electronically signed by{" "}
+                    {reviewerName ||
+                      (profile?.id === report.reviewed_by
+                        ? profile.full_name
+                        : null) ||
+                      "Unknown"}{" "}
+                    on {new Date(report.reviewed_at).toLocaleString()}
+                  </p>
+                )}
 
               {/* EC action buttons — only if this EC is assigned and report is pending review */}
               {!assignedEc && report && report.status === "submitted" && (
@@ -335,6 +374,8 @@ export default function AdverseEventDetailPage() {
               <div><dt className="font-medium text-slate-700">Study ID</dt><dd className="mt-1 break-all font-mono text-xs text-slate-600">{event.study_id}</dd></div>
               <div><dt className="font-medium text-slate-700">Study status</dt><dd className="mt-1 capitalize text-slate-600">{study?.status || "Unavailable"}</dd></div>
               <div><dt className="font-medium text-slate-700">Severity</dt><dd className="mt-1 capitalize text-slate-600">{event.severity}</dd></div>
+              <div><dt className="font-medium text-slate-700">MedDRA Term</dt><dd className="mt-1 text-slate-600">{event.meddra_term || "—"}</dd></div>
+              <div><dt className="font-medium text-slate-700">WHODrug Term</dt><dd className="mt-1 text-slate-600">{event.who_drug_term || "—"}</dd></div>
             </dl>
           </section>
 
@@ -359,6 +400,15 @@ export default function AdverseEventDetailPage() {
               <p className="mt-1 text-slate-500">Submitted: {new Date(report.submitted_at).toLocaleString()}</p>
               {report.report_comment && <p className="mt-2 text-slate-600">Coordinator report: {report.report_comment}</p>}
               {report.review_comment && <p className="mt-2 text-slate-600">EC comment: {report.review_comment}</p>}
+              {(report.status === "approved" || report.status === "rejected") &&
+                report.reviewed_by &&
+                report.reviewed_at && (
+                  <p className="mt-3 border-t border-slate-200 pt-3 italic text-slate-700">
+                    Electronically signed by{" "}
+                    {reviewerName || "Unknown"} on{" "}
+                    {new Date(report.reviewed_at).toLocaleString()}
+                  </p>
+                )}
             </div>}
             {isCoordinator && !studySuspended && (!report || report.status === "rejected") && (
               <button type="button" onClick={() => setShowReportForm(true)} disabled={savingReport} className="mt-6 rounded-lg bg-[#1d5edb] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#174ec0] disabled:opacity-50">{report?.status === "rejected" ? "Resubmit Report" : "Mark Reported"}</button>

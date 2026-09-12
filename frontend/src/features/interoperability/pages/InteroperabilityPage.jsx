@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { getStudiesApi } from "../../studies/api/studiesAPI";
 import { buildFhirBundle } from "../utils/fhirBundle";
 import { downloadSdtmDm } from "../utils/sdtmDm";
+import { downloadSdtmAe } from "../utils/sdtmAe";
+import { downloadDefineXml } from "../utils/defineXml";
 import { getDemoAbhaId } from "../utils/abha";
 import FhirBundleModal from "../components/FhirBundleModal";
 
@@ -58,6 +60,15 @@ export default function InteroperabilityPage() {
   const handleExportSdtm = () => {
     if (!selectedStudy) return;
     downloadSdtmDm(selectedStudy);
+  };
+
+  const handleExportSdtmAe = () => {
+    if (!selectedStudy) return;
+    downloadSdtmAe(selectedStudy);
+  };
+
+  const handleExportDefineXml = () => {
+    downloadDefineXml();
   };
 
   if (loading) {
@@ -163,8 +174,12 @@ export default function InteroperabilityPage() {
             <h2 className="text-base font-semibold text-[#16324f]">SDTM / CDISC <span className="ml-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#8a9bad]">Demo</span></h2>
             {selectedStudy ? (
               <div className="space-y-3">
-                <p className="text-sm text-slate-600">DM dataset with {selectedStudy.subjects?.length || 0} subject records</p>
-                <button type="button" onClick={handleExportSdtm} className="cursor-pointer rounded-[5px] border border-[#cfdbe7] bg-white px-4 py-2 text-sm font-medium text-[#53657d] transition hover:bg-[#f8fbfe] focus:outline-none focus:ring-2 focus:ring-[#dfeeff] disabled:cursor-not-allowed disabled:opacity-50">Export SDTM Dataset (DM)</button>
+                <p className="text-sm text-slate-600">DM dataset with {selectedStudy.subjects?.length || 0} subject records; AE domain from real adverse_events</p>
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" onClick={handleExportSdtm} className="cursor-pointer rounded-[5px] border border-[#cfdbe7] bg-white px-4 py-2 text-sm font-medium text-[#53657d] transition hover:bg-[#f8fbfe] focus:outline-none focus:ring-2 focus:ring-[#dfeeff] disabled:cursor-not-allowed disabled:opacity-50">Export SDTM Dataset (DM)</button>
+                  <button type="button" onClick={handleExportSdtmAe} className="cursor-pointer rounded-[5px] border border-[#cfdbe7] bg-white px-4 py-2 text-sm font-medium text-[#53657d] transition hover:bg-[#f8fbfe] focus:outline-none focus:ring-2 focus:ring-[#dfeeff] disabled:cursor-not-allowed disabled:opacity-50">Export SDTM Dataset (AE domain)</button>
+                  <button type="button" onClick={handleExportDefineXml} className="cursor-pointer rounded-[5px] border border-[#cfdbe7] bg-white px-4 py-2 text-sm font-medium text-[#53657d] transition hover:bg-[#f8fbfe] focus:outline-none focus:ring-2 focus:ring-[#dfeeff] disabled:cursor-not-allowed disabled:opacity-50">Export Define-XML</button>
+                </div>
               </div>
             ) : <p className="text-sm text-slate-500">Select a study to view SDTM options</p>}
           </section>

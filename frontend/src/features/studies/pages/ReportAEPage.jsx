@@ -219,34 +219,34 @@ export function ReportAEPage() {
               </label>
             </div>
 
-            {/* MedDRA Term */}
-            <div>
-              <label className="block text-sm font-medium text-slate-900">
-                MedDRA Term
-              </label>
-              <input
-                type="text"
-                name="meddra_term"
-                value={formData.meddra_term}
-                onChange={handleChange}
-                placeholder="Optional MedDRA term (can be filled by AI)"
-                className="mt-2 w-full rounded-[5px] border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder-slate-500 focus:border-[#1d5edb] focus:outline-none focus:ring-1 focus:ring-[#1d5edb]"
-              />
-            </div>
-
-            {/* WHO Drug Term */}
-            <div>
-              <label className="block text-sm font-medium text-slate-900">
-                WHO Drug Term
-              </label>
-              <input
-                type="text"
-                name="who_drug_term"
-                value={formData.who_drug_term}
-                onChange={handleChange}
-                placeholder="Optional WHO drug term"
-                className="mt-2 w-full rounded-[5px] border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder-slate-500 focus:border-[#1d5edb] focus:outline-none focus:ring-1 focus:ring-[#1d5edb]"
-              />
+            {/* MedDRA Term + WHODrug Term — equal width, stack on small screens */}
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+              <div className="min-w-0">
+                <label className="block text-sm font-medium text-slate-900">
+                  MedDRA Term
+                </label>
+                <input
+                  type="text"
+                  name="meddra_term"
+                  value={formData.meddra_term}
+                  onChange={handleChange}
+                  placeholder="Enter MedDRA term"
+                  className="mt-2 w-full rounded-[5px] border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder-slate-500 focus:border-[#1d5edb] focus:outline-none focus:ring-1 focus:ring-[#1d5edb]"
+                />
+              </div>
+              <div className="min-w-0">
+                <label className="block text-sm font-medium text-slate-900">
+                  WHODrug Term
+                </label>
+                <input
+                  type="text"
+                  name="who_drug_term"
+                  value={formData.who_drug_term}
+                  onChange={handleChange}
+                  placeholder="Enter WHODrug term"
+                  className="mt-2 w-full rounded-[5px] border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder-slate-500 focus:border-[#1d5edb] focus:outline-none focus:ring-1 focus:ring-[#1d5edb]"
+                />
+              </div>
             </div>
 
             {/* Buttons */}

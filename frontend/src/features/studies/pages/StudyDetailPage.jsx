@@ -10,6 +10,8 @@ import {
 } from "../../studySubmissions/api/studySubmissionsAPI";
 import { buildFhirBundle } from "../../interoperability/utils/fhirBundle";
 import { downloadSdtmDm } from "../../interoperability/utils/sdtmDm";
+import { downloadSdtmAe } from "../../interoperability/utils/sdtmAe";
+import { downloadDefineXml } from "../../interoperability/utils/defineXml";
 import { getDemoAbhaId } from "../../interoperability/utils/abha";
 import FhirBundleModal from "../../interoperability/components/FhirBundleModal";
 
@@ -397,11 +399,25 @@ export function StudyDetailPage() {
                 >
                   Export SDTM Dataset (DM)
                 </button>
+                <button
+                  type="button"
+                  onClick={() => downloadSdtmAe(study)}
+                  className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                >
+                  Export SDTM Dataset (AE domain)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => downloadDefineXml()}
+                  className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                >
+                  Export Define-XML
+                </button>
               </div>
               <p className="text-xs text-slate-400 mt-2">
                 {/* DEMO ONLY: This is a client-side sample FHIR R4 Bundle. No FHIR server or ABDM/FHIR API is connected. */}
-                {/* DEMO ONLY: SDTM DM dataset is generated client-side from synthetic/de-identified study data; no CDISC service is connected. */}
-                FHIR Bundle and SDTM DM are generated client-side from de-identified study data. No external APIs are connected.
+                {/* DEMO ONLY: SDTM DM/AE datasets are generated client-side from de-identified study data; no CDISC service is connected. */}
+                FHIR Bundle and SDTM DM/AE are generated client-side from de-identified study data. No external APIs are connected.
               </p>
             </div>
           </div>
