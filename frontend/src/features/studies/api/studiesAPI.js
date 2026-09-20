@@ -35,12 +35,24 @@ export const getStudyApi = async (study_id) => {
     throw new Error(subjectsError.message);
   }
 
+  // Also fetch study_assignments
+  const { data: assignments, error: assignError } = await supabase
+    .from("study_assignments")
+    .select("*")
+    .eq("study_id", study_id);
+
+  if (assignError) {
+    // Non-fatal - study_assignments table may not exist yet
+    console.warn("Failed to load study_assignments:", assignError.message);
+  }
+
   return {
     ...study,
     // The live studies table uses ec_id; keep the existing workflow API name.
     ethics_committee_id: study.ec_id ?? study.ethics_committee_id ?? null,
     sites: sites || [],
     subjects: subjects || [],
+    study_assignments: assignments || [],
   };
 };
 
@@ -93,6 +105,61 @@ export const updateStudyStatusApi = async (study_id, status) => {
     .from("studies")
     .update({ status })
     .eq("id", study_id)
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data;
+};
+
+/**
+ * Admin-only: create a new study record in the studies table.
+ *
+ * Only sends fields that have values — no null writes for blank optional inputs.
+ * RLS studies_write allows admin, principal_investigator, and study_coordinator to insert.
+ *
+ * Required:  title, targetEnrollment
+ * Optional:  phase, ctriNumber, startDate, endDate
+ *
+ * @returns {object} The created study row (including generated id)
+ */
+export const createStudyApi = async ({
+  title,
+  targetEnrollment,
+  phase,
+  ctriNumber,
+  startDate,
+  endDate,
+  ecId,
+}) => {
+  const trimmedTitle = title?.trim();
+  if (!trimmedTitle) {
+    throw new Error("Study title is required.");
+  }
+
+  const enrollment = parseInt(targetEnrollment, 10);
+  if (isNaN(enrollment) || enrollment < 0) {
+    throw new Error("Target enrollment must be a non-negative number.");
+  }
+
+  // Build the insert payload — only include optional fields when they have a value
+  const payload = {
+    title: trimmedTitle,
+    target_enrollment: enrollment,
+  };
+
+  if (phase?.trim()) payload.phase = phase.trim();
+  if (ctriNumber?.trim()) payload.ctri_number = ctriNumber.trim();
+  if (startDate) payload.start_date = startDate;
+  if (endDate) payload.end_date = endDate;
+  if (ecId) payload.ec_id = ecId;
+
+  const { data, error } = await supabase
+    .from("studies")
+    .insert(payload)
     .select()
     .single();
 

@@ -348,7 +348,7 @@ export function DashboardPage() {
                                 : "bg-[#f8fafc] text-[#5d7187]"
                             }`}
                           >
-                            {status.charAt(0).toUpperCase() + status.slice(1)}
+                            {status === "protocol_draft" ? "Pending Ethics Review" : status.charAt(0).toUpperCase() + status.slice(1)}
                           </span>
                         </td>
 

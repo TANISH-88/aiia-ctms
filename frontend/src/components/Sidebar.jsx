@@ -30,7 +30,14 @@ const sections = [
         "users",
         ["admin", "study_coordinator", "principal_investigator"],
       ],
+      [
+        "Interest Inbox",
+        "/participants/interest",
+        "inbox",
+        ["admin", "study_coordinator", "principal_investigator"],
+      ],
       ["Study", "/study", "file", ["admin", "study_coordinator"]],
+      ["Create Trial", "/admin/create-trial", "plus", ["admin"]],
       ["Sites", null, "pin", ["admin"]],
       ["Protocols", null, "book", ["admin", "study_coordinator"]],
     ],
@@ -129,6 +136,12 @@ const iconPaths = {
 
   download:
     "M12 3v12m0 0 4-4m-4 4-4-4M4 19h16",
+
+  plus:
+    "M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2Zm0 6v8m-4-4h8",
+
+  inbox:
+    "M4 4h16v10H4V4Zm0 10 4 4h8l4-4M8 10h8",
 };
 
 function Icon({ name }) {

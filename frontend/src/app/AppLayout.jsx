@@ -14,7 +14,9 @@ const AppLayout = () => {
     pathname.startsWith("/adverse-events") ||
     pathname.startsWith("/alerts") ||
     pathname.startsWith("/audit-trail") ||
-    pathname.startsWith("/interoperability");
+    pathname.startsWith("/interoperability") ||
+    pathname.startsWith("/admin/") ||
+    pathname.startsWith("/user/");
 
   return (
     <div className="relative min-h-screen overflow-visible bg-[#edf4fb] text-slate-900">

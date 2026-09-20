@@ -18,9 +18,10 @@ const STATUS_STYLES = {
 
 function StatusBadge({ status }) {
   const cls = STATUS_STYLES[status] || "bg-slate-100 text-slate-600";
+  const label = status === "protocol_draft" ? "Pending Ethics Review" : (status || "Unknown").replace(/_/g, " ");
   return (
     <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ${cls}`}>
-      {(status || "Unknown").replace(/_/g, " ")}
+      {label}
     </span>
   );
 }
@@ -260,7 +261,7 @@ export default function PIDashboardPage() {
                                 Submitted {study.submission?.submitted_at
                                   ? new Date(study.submission.submitted_at).toLocaleString()
                                   : "—"}
-                                {" · "}Study status: <span className="capitalize">{(study.status || "").replace(/_/g, " ")}</span>
+                                {" · "}Study status: <span className="capitalize">{study.status === "protocol_draft" ? "Pending Ethics Review" : (study.status || "").replace(/_/g, " ")}</span>
                               </p>
                             </div>
                             <div className="flex items-center gap-3">

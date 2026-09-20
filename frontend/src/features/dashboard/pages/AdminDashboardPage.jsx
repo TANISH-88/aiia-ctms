@@ -1,8 +1,9 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/hooks/useAuth";
 import { useDashboard } from "../hooks/useDashboard";
 import { AdminDashboardSkeleton } from "../../../components/DashboardSkeleton";
+import { changeUserEmailApi } from "../../user/api/userAPI";
 
 export function AdminDashboardPage() {
   const navigate = useNavigate();
@@ -13,7 +14,43 @@ export function AdminDashboardPage() {
     loadDashboard,
   } = useDashboard();
 
-  const { user, profile, isAuthenticated, initialized } = useAuth();
+  const { isAuthenticated, initialized } = useAuth();
+
+  // --- Admin email-change form state ---
+  const [emailChangeUserId, setEmailChangeUserId] = useState("");
+  const [emailChangeNewEmail, setEmailChangeNewEmail] = useState("");
+  const [emailChangeLoading, setEmailChangeLoading] = useState(false);
+  const [emailChangeResult, setEmailChangeResult] = useState(null); // { success, message } | null
+  const [emailChangeError, setEmailChangeError] = useState(null);
+
+  const handleChangeEmail = async (event) => {
+    event.preventDefault();
+    setEmailChangeError(null);
+    setEmailChangeResult(null);
+
+    const trimmedUserId = emailChangeUserId.trim();
+    const trimmedEmail = emailChangeNewEmail.trim();
+
+    if (!trimmedUserId || !trimmedEmail) {
+      setEmailChangeError("Both User ID and New Email are required.");
+      return;
+    }
+
+    try {
+      setEmailChangeLoading(true);
+      const result = await changeUserEmailApi(trimmedUserId, trimmedEmail);
+      setEmailChangeResult({
+        message: `Email changed from ${result.old_email} → ${result.new_email}`,
+      });
+      setEmailChangeUserId("");
+      setEmailChangeNewEmail("");
+    } catch (err) {
+      setEmailChangeError(err.message);
+    } finally {
+      setEmailChangeLoading(false);
+    }
+  };
+  // --- end email-change form state ---
 
   useEffect(() => {
     if (!initialized || !isAuthenticated) {
@@ -193,6 +230,94 @@ export function AdminDashboardPage() {
                 User roles and permissions
               </p>
             </button>
+
+            {/* Create Trial */}
+            <button
+              type="button"
+              onClick={() => navigate("/admin/create-trial")}
+              className="group rounded-[6px] border border-[#dfe7ef] bg-white p-5 text-left shadow-[0_1px_2px_rgba(19,52,80,0.08)] transition-all duration-200 hover:border-[#7c5ce9] hover:shadow-[0_4px_12px_rgba(19,52,80,0.12)]"
+            >
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium text-[#5d7187]">Create Trial</p>
+
+                <span className="h-2.5 w-2.5 rounded-full bg-[#7c5ce9]" />
+              </div>
+
+              <p className="mt-4 text-[15px] font-semibold tracking-[-0.02em] text-[#16324f]">
+                New Clinical Trial
+              </p>
+
+              <p className="mt-2 text-xs text-[#5d7187]">
+                Create study and provision team accounts
+              </p>
+            </button>
+          </div>
+
+          {/* Change User Email — admin-only panel */}
+          <div className="mt-5 rounded-[6px] border border-[#dfe7ef] bg-white p-5 shadow-[0_1px_2px_rgba(19,52,80,0.08)]">
+            <p className="text-sm font-medium text-[#5d7187]">Change User Email</p>
+            <p className="mt-1 text-[15px] font-semibold tracking-[-0.02em] text-[#16324f]">
+              Admin — Change a user&apos;s login email
+            </p>
+            <p className="mt-1 text-xs text-[#5d7187]">
+              Uses the secure server-side Edge Function. The target user will be able to log in with the new email immediately.
+            </p>
+
+            <form onSubmit={handleChangeEmail} className="mt-4 grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
+              <div className="flex flex-col gap-1">
+                <label htmlFor="emailChangeUserId" className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[#5d7187]">
+                  User ID (UUID)
+                </label>
+                <input
+                  id="emailChangeUserId"
+                  type="text"
+                  value={emailChangeUserId}
+                  onChange={(e) => setEmailChangeUserId(e.target.value)}
+                  placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                  className="h-9 rounded-[5px] border border-[#cfdbe7] bg-[#f8fafc] px-3 font-mono text-xs text-[#16324f] outline-none transition placeholder:text-[#8a9bad] focus:border-[#1f74d8] focus:bg-white focus:ring-2 focus:ring-[#dfeeff]"
+                  disabled={emailChangeLoading}
+                  autoComplete="off"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label htmlFor="emailChangeNewEmail" className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[#5d7187]">
+                  New Email Address
+                </label>
+                <input
+                  id="emailChangeNewEmail"
+                  type="email"
+                  value={emailChangeNewEmail}
+                  onChange={(e) => setEmailChangeNewEmail(e.target.value)}
+                  placeholder="user@example.com"
+                  className="h-9 rounded-[5px] border border-[#cfdbe7] bg-[#f8fafc] px-3 text-xs text-[#16324f] outline-none transition placeholder:text-[#8a9bad] focus:border-[#1f74d8] focus:bg-white focus:ring-2 focus:ring-[#dfeeff]"
+                  disabled={emailChangeLoading}
+                  autoComplete="off"
+                />
+              </div>
+
+              <div className="flex items-end">
+                <button
+                  type="submit"
+                  disabled={emailChangeLoading}
+                  className="h-9 rounded-[5px] bg-[#1f74d8] px-4 text-xs font-semibold text-white transition hover:bg-[#145db5] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {emailChangeLoading ? "Changing\u2026" : "Change Email"}
+                </button>
+              </div>
+            </form>
+
+            {emailChangeResult && (
+              <p className="mt-3 rounded-[5px] border border-[#c3e6cb] bg-[#eaf6ef] px-3 py-2 text-xs font-medium text-[#14734c]">
+                ✓ {emailChangeResult.message}
+              </p>
+            )}
+
+            {emailChangeError && (
+              <p className="mt-3 rounded-[5px] border border-[#f1c8c2] bg-[#fff5f4] px-3 py-2 text-xs font-medium text-[#9f3f32]">
+                ✗ {emailChangeError}
+              </p>
+            )}
           </div>
         </section>
 
@@ -385,7 +510,7 @@ export function AdminDashboardPage() {
                                 : "bg-[#f8fafc] text-[#5d7187]"
                             }`}
                           >
-                            {status.charAt(0).toUpperCase() + status.slice(1)}
+                            {status === "protocol_draft" ? "Pending Ethics Review" : status.charAt(0).toUpperCase() + status.slice(1)}
                           </span>
                         </td>
 

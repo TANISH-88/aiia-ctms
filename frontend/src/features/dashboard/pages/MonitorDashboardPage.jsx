@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useUser } from "../../user/hooks/useUser";
 import { getStudiesApi } from "../../studies/api/studiesAPI";
 import { getAdverseEventsApi } from "../../adverseEvents/api/adverseEventsAPI";
+import { supabase } from "../../../api/supabase";
 
 const STATUS_STYLES = {
   active: "bg-[#e5f6ee] text-[#14734c]",
@@ -17,7 +18,7 @@ const STATUS_STYLES = {
 
 function StatusBadge({ status }) {
   const style = STATUS_STYLES[status] || "bg-[#eef1f5] text-[#53657d]";
-  const label = (status || "Unknown").replace(/_/g, " ");
+  const label = status === "protocol_draft" ? "Pending Ethics Review" : (status || "Unknown").replace(/_/g, " ");
 
   return (
     <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium capitalize ${style}`}>
@@ -68,8 +69,22 @@ export default function MonitorDashboardPage() {
     try {
       setLoading(true);
       setError(null);
+      
+      // Load studies assigned to monitor via study_assignments
+      const { data: assignments, error: assignError } = await supabase
+        .from("study_assignments")
+        .select("study_id")
+        .eq("role", "monitor");
+      
+      if (assignError) {
+        throw new Error(assignError.message);
+      }
+      
+      const assignedStudyIds = (assignments || []).map(a => a.study_id);
+      
+      // Load all studies and filter by assigned IDs
       const [studiesData, aeData] = await Promise.all([getStudiesApi(), getAdverseEventsApi()]);
-      const assignedStudies = studiesData.filter((study) => study.sites?.some((site) => site.id === profile?.site_id));
+      const assignedStudies = studiesData.filter((study) => assignedStudyIds.includes(study.id));
       setStudies(assignedStudies);
       setAdverseEvents(aeData);
     } catch (err) {
@@ -77,7 +92,7 @@ export default function MonitorDashboardPage() {
     } finally {
       setLoading(false);
     }
-  }, [profile?.site_id]);
+  }, [profile?.id]);
 
   useEffect(() => {
     load();

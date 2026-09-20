@@ -241,6 +241,43 @@ export const needsProfileSetup = (profile) => {
   return profile?.profile_completed === false;
 };
 
+/**
+ * Admin-only: change a user's email via the admin-change-user-email Edge Function.
+ *
+ * The Edge Function verifies the caller's admin role server-side.
+ * supabase.functions.invoke automatically forwards the session JWT, so no
+ * service-role key is ever needed or exposed on the frontend.
+ *
+ * @param {string} userId  - UUID of the target user (auth.users.id)
+ * @param {string} newEmail - New email address to set
+ * @returns {{ userId, oldEmail, newEmail, message }}
+ * @throws {Error} if the caller is not admin (403), user not found (404), or server error (500)
+ */
+export const changeUserEmailApi = async (userId, newEmail) => {
+  if (!userId || !newEmail) {
+    throw new Error("user_id and new_email are required");
+  }
+
+  const { data, error } = await supabase.functions.invoke(
+    "admin-change-user-email",
+    {
+      body: { user_id: userId, new_email: newEmail },
+    },
+  );
+
+  if (error) {
+    // supabase.functions.invoke wraps HTTP-level errors in error.message
+    throw new Error(error.message || "Edge Function call failed");
+  }
+
+  if (data?.error) {
+    // Application-level error returned in the JSON body (e.g. 403 Forbidden)
+    throw new Error(data.error);
+  }
+
+  return data;
+};
+
 /** Post-setup landing path by role (permissions unchanged; landing only). */
 export const getRoleDashboardPath = (role) => {
   switch (role) {

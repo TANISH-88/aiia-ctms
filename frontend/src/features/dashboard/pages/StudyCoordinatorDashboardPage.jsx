@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useUser } from "../../user/hooks/useUser";
 import { getStudiesApi } from "../../studies/api/studiesAPI";
 import { getAdverseEventsApi } from "../../adverseEvents/api/adverseEventsAPI";
+import { supabase } from "../../../api/supabase";
 import { StudyCoordinatorDashboardSkeleton } from "../../../components/DashboardSkeleton";
 
 // ── Status badge ──────────────────────────────────────────────────────────────
@@ -26,9 +27,10 @@ const STATUS_STYLES = {
 
 function StatusBadge({ status }) {
   const cls = STATUS_STYLES[status] || "bg-[#f4f8fb] text-[#5d7187]";
+  const label = status === "protocol_draft" ? "Pending Ethics Review" : (status || "Unknown").replace(/_/g, " ");
   return (
     <span className={`inline-block rounded-[4px] px-2 py-0.5 text-xs font-medium capitalize ${cls}`}>
-      {(status || "Unknown").replace(/_/g, " ")}
+      {label}
     </span>
   );
 }
@@ -48,13 +50,29 @@ export default function StudyCoordinatorDashboardPage() {
     try {
       setLoading(true);
       setError(null);
+      
+      // Load studies assigned to coordinator via study_assignments
+      const { data: assignments, error: assignError } = await supabase
+        .from("study_assignments")
+        .select("study_id")
+        .eq("role", "study_coordinator");
+      
+      if (assignError) {
+        throw new Error(assignError.message);
+      }
+      
+      const assignedStudyIds = (assignments || []).map(a => a.study_id);
+      
+      // Load all studies and filter by assigned IDs
       const [studiesData, aeData] = await Promise.all([
         getStudiesApi(),
         getAdverseEventsApi(),
       ]);
-      const assignedStudies = studiesData.filter(
-        (study) => study.sites?.some((site) => site.id === profile?.site_id),
+      
+      const assignedStudies = studiesData.filter((study) => 
+        assignedStudyIds.includes(study.id)
       );
+      
       setStudies(assignedStudies);
       setAdverseEvents(aeData);
     } catch (err) {
@@ -62,7 +80,7 @@ export default function StudyCoordinatorDashboardPage() {
     } finally {
       setLoading(false);
     }
-  }, [profile?.site_id]);
+  }, [profile?.id]);
 
   useEffect(() => {
     load();

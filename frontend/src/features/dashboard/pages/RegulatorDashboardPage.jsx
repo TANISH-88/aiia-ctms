@@ -327,8 +327,7 @@ export function RegulatorDashboardPage() {
                                 : "bg-slate-100 text-slate-600"
                             }`}
                           >
-                            {status.charAt(0).toUpperCase() +
-                              status.slice(1)}
+                            {status === "protocol_draft" ? "Pending Ethics Review" : status.charAt(0).toUpperCase() + status.slice(1)}
                           </span>
                         </td>
 

@@ -172,7 +172,7 @@ export default function ParticipantsPage() {
                   {[
                     "Subject Code",
                     "Status",
-                    "Study ID",
+                    "Study",
                     "Site ID",
                     "Enrollment Date",
                     "ABHA ID (demo)",
@@ -200,8 +200,8 @@ export default function ParticipantsPage() {
                         {formatStatus(participant.status)}
                       </span>
                     </td>
-                    <td className="px-5 py-4 font-mono text-xs text-[#5d7187]">
-                      {participant.study_id}
+                    <td className="px-5 py-4 text-sm text-[#16324f]">
+                      {participant.studies?.title || participant.study_id}
                     </td>
                     <td className="px-5 py-4 font-mono text-xs text-[#5d7187]">
                       {participant.site_id || "Not assigned"}
@@ -232,7 +232,7 @@ export default function ParticipantsPage() {
                   <div className="flex items-start justify-between gap-4">
                     <div>
                       <h2 className="text-sm font-semibold text-[#16324f]">{participant.subject_code}</h2>
-                      <p className="mt-1 font-mono text-xs text-[#5d7187]">{participant.study_id}</p>
+                      <p className="mt-1 text-xs text-[#5d7187]">{participant.studies?.title || participant.study_id}</p>
                     </div>
                     <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${getStatusColor(participant.status)}`}>
                       {formatStatus(participant.status)}

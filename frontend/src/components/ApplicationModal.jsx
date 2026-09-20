@@ -2,9 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { supabase } from "../api/supabase";
 
 /**
- * Public trial application modal.
- * Accessible without login — submits to the `applications` table via anon key.
- * RLS on `applications` allows anon inserts (see public_application_form_migration.sql).
+ * Public trial participant-interest form.
+ * Accessible without login — submits to the `participant_interest` table via anon key.
+ * RLS on `participant_interest` allows anon inserts (see phase23_participant_interest_migration.sql).
  */
 export default function ApplicationModal({ onClose, inline = false }) {
   const [fullName, setFullName] = useState("");
@@ -59,13 +59,14 @@ export default function ApplicationModal({ onClose, inline = false }) {
       setError(null);
 
       const { error: insertError } = await supabase
-        .from("applications")
+        .from("participant_interest")
         .insert({
           full_name: fullName.trim(),
           email: email.trim().toLowerCase(),
           phone: phone.trim() || null,
           date_of_birth: dateOfBirth || null,
-          message: message.trim() || null,
+          condition_or_interest: message.trim() || null,
+          study_id: null,
         });
 
       if (insertError) {

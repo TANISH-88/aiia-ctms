@@ -26,13 +26,15 @@ export default function Study() {
 		loadStudies();
 	}, []);
 
-	const formatValue = (value) =>
-		value
+	const formatValue = (value) => {
+		if (value === "protocol_draft") return "Pending Ethics Review";
+		return value
 			? value
 					.split("_")
 					.map((part) => part.charAt(0).toUpperCase() + part.slice(1))
 					.join(" ")
 			: "Not specified";
+	};
 
 	const getStatusColor = (status) => {
 		switch (status) {

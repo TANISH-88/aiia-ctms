@@ -3,7 +3,7 @@ import { supabase } from "../../../api/supabase";
 /**
  * Fetch all data needed for the Principal Investigator dashboard.
  *
- * Scope: studies where studies.pi_id = auth.uid()
+ * Scope: studies assigned to PI via study_assignments
  * Includes:
  *  - study details + site/subject counts
  *  - AE/SAE safety metrics
@@ -26,6 +26,40 @@ export const getPiDashboardApi = async () => {
 
   const piId = user.id;
 
+  // Fetch PI's assigned studies from study_assignments
+  const { data: assignments, error: assignError } = await supabase
+    .from("study_assignments")
+    .select("study_id")
+    .eq("profile_id", piId)
+    .eq("role", "principal_investigator");
+
+  if (assignError) {
+    throw new Error(assignError.message);
+  }
+
+  const studyIds = (assignments || []).map((a) => a.study_id);
+
+  // Handle zero assignments safely
+  if (studyIds.length === 0) {
+    return {
+      studies: [],
+      totals: {
+        studies: 0,
+        targetEnrollment: 0,
+        actualEnrollment: 0,
+        openAe: 0,
+        overdueSae: 0,
+        deviations: 0,
+        sites: 0,
+        subjects: 0,
+      },
+      alerts: [],
+      pendingApprovals: [],
+      recentEcDecisions: [],
+      pendingAeReviews: [],
+    };
+  }
+
   const [
     studiesResult,
     kpisResult,
@@ -43,7 +77,7 @@ export const getPiDashboardApi = async () => {
           pi_id, ec_id, ec_approval_date, start_date, end_date,
           created_at, updated_at
         `)
-      .eq("pi_id", piId)
+      .in("id", studyIds)
       .order("created_at", { ascending: false }),
 
     supabase.from("study_kpis").select("*"),

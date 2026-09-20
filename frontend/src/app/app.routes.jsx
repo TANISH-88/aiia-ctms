@@ -8,12 +8,14 @@ import RoleRoute from "../features/auth/components/RoleRoute";
 import RequireProfileSetup from "../features/auth/components/RequireProfileSetup";
 import { PublicRoute } from "../features/auth/components/PublicRoute";
 import ForgetPasswordPage from "../features/auth/pages/ForgetPasswordPage";
+import ResetPasswordPage from "../features/auth/pages/ResetPasswordPage";
 import InvalidAccessPage from "../pages/InvalidAccessPage";
 import RoleDashboardPage from "../features/dashboard/pages/RoleDashboardPage";
 import ProfilePage from "../features/user/pages/ProfilePage";
 import CTMSLayout from "./CTMSLayout";
 import Trial from "../features/clinicalTrial/pages/Trial";
 import ParticipantsPage from "../features/participants/pages/ParticipantsPage";
+import InterestInboxPage from "../features/participants/pages/InterestInboxPage";
 import Study from "../features/study/pages/Study";
 import StudyDetailPage from "../features/studies/pages/StudyDetailPage";
 import ReportAEPage from "../features/studies/pages/ReportAEPage";
@@ -25,10 +27,12 @@ import AdverseEventsPage from "../features/adverseEvents/pages/AdverseEventsPage
 import AdverseEventDetailPage from "../features/adverseEvents/pages/AdverseEventDetailPage";
 import InteroperabilityPage from "../features/interoperability/pages/InteroperabilityPage";
 import ApplicationModal from "../components/ApplicationModal";
+import CreateTrialPage from "../features/dashboard/pages/CreateTrialPage";
+import AuthInitializer from "../features/auth/components/AuthInitializer";
 
 export const router = createBrowserRouter([
   {
-    element: <AppLayout />,
+    element: <AuthInitializer><AppLayout /></AuthInitializer>,
     children: [
       {
         path: "/",
@@ -48,6 +52,10 @@ export const router = createBrowserRouter([
           {
             path: "/auth/forget-password",
             element: <ForgetPasswordPage />,
+          },
+          {
+            path: "/auth/reset-password",
+            element: <ResetPasswordPage />,
           },
           {
             path: "/403",
@@ -102,6 +110,10 @@ export const router = createBrowserRouter([
                     children: [
                       { path: "/clinical-trials", element: <Trial /> },
                       { path: "/participants", element: <ParticipantsPage /> },
+                      {
+                        path: "/participants/interest",
+                        element: <InterestInboxPage />,
+                      },
                     ],
                   },
                   {
@@ -112,6 +124,7 @@ export const router = createBrowserRouter([
                           "study_coordinator",
                           "principal_investigator",
                           "monitor",
+                          "ethics_committee",
                         ]}
                       />
                     ),
@@ -174,6 +187,7 @@ export const router = createBrowserRouter([
                       { path: "/alerts", element: <AlertsPage /> },
                       { path: "/audit-trail", element: <AuditLogPage /> },
                       { path: "/interoperability", element: <InteroperabilityPage /> },
+                      { path: "/admin/create-trial", element: <CreateTrialPage /> },
                     ],
                   },
                 ],

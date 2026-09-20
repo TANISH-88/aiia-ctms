@@ -40,6 +40,66 @@ export const getStudySubmissionsApi = async ({ ecId } = {}) => {
   return data || [];
 };
 
+/**
+ * Get studies assigned to an Ethics Committee via study_assignments.
+ * Returns studies even when no study_submissions record exists yet.
+ */
+export const getAssignedStudiesForEC = async ({ ecId } = {}) => {
+  if (!ecId) {
+    return [];
+  }
+
+  // Query 1: Get assigned studies from study_assignments joined with studies
+  const { data: assignments, error: assignError } = await supabase
+    .from("study_assignments")
+    .select(`
+      study_id,
+      studies (*)
+    `)
+    .eq("profile_id", ecId)
+    .eq("role", "ethics_committee");
+
+  if (assignError) {
+    throw new Error(assignError.message);
+  }
+
+  if (!assignments || assignments.length === 0) {
+    return [];
+  }
+
+  // Query 2: Get submissions for the assigned study_ids
+  const studyIds = assignments.map((a) => a.study_id);
+  const { data: submissions, error: subError } = await supabase
+    .from("study_submissions")
+    .select("*")
+    .in("study_id", studyIds);
+
+  if (subError) {
+    throw new Error(subError.message);
+  }
+
+  // Create a map of study_id -> submission for O(1) lookup
+  const submissionMap = new Map();
+  (submissions || []).forEach((sub) => {
+    submissionMap.set(sub.study_id, sub);
+  });
+
+  // Merge results: for each assignment, look up submission by study_id
+  return assignments.map((assignment) => {
+    const submission = submissionMap.get(assignment.study_id) || null;
+    return {
+      studies: assignment.studies,
+      submission,
+      // Add a synthetic status for UI purposes
+      status: submission?.status || "awaiting_submission",
+      submitted_at: submission?.submitted_at || null,
+      reviewed_at: submission?.reviewed_at || null,
+      review_comment: submission?.review_comment || null,
+      comment: submission?.comment || null,
+    };
+  });
+};
+
 export const createStudySubmissionApi = async ({
   studyId,
   ecId,
@@ -108,10 +168,20 @@ export const decideStudySubmissionApi = async ({
       reviewed_at: new Date().toISOString(),
     })
     .eq("id", submissionId)
+    .eq("status", "pending")   // guard: reject silently if already decided
     .select()
     .single();
 
   if (error) {
+    // PGRST116: no row matched — submission was already decided
+    if (
+      error.code === "PGRST116" ||
+      error.message?.includes("JSON object requested, multiple (or no) rows returned")
+    ) {
+      throw new Error(
+        "This submission has already been reviewed and cannot be changed.",
+      );
+    }
     throw new Error(error.message);
   }
 

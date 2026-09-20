@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useUser } from "../../user/hooks/useUser";
-import { getStudySubmissionsApi } from "../../studySubmissions/api/studySubmissionsAPI";
+import { getStudySubmissionsApi, getAssignedStudiesForEC } from "../../studySubmissions/api/studySubmissionsAPI";
 import { getAdverseEventsApi } from "../../adverseEvents/api/adverseEventsAPI";
 
 // ── Shared helpers ─────────────────────────────────────────────────────────
@@ -13,6 +13,7 @@ const STATUS_STYLES = {
   changes_requested: "bg-orange-100 text-orange-800",
   submitted: "bg-blue-100 text-blue-800",
   reviewed: "bg-slate-100 text-slate-600",
+  awaiting_submission: "bg-slate-100 text-slate-600",
 };
 
 function StatusBadge({ status }) {
@@ -31,6 +32,7 @@ export default function EthicsCommitteeDashboardPage() {
   const { user: profile } = useUser();
 
   const [studySubmissions, setStudySubmissions] = useState([]);
+  const [assignedStudies, setAssignedStudies] = useState([]);
   const [aeReports, setAeReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -39,8 +41,9 @@ export default function EthicsCommitteeDashboardPage() {
     try {
       setLoading(true);
       setError(null);
-      const [submissionsData, aeData] = await Promise.all([
+      const [submissionsData, assignedData, aeData] = await Promise.all([
         getStudySubmissionsApi({ ecId: profile?.id }),
+        getAssignedStudiesForEC({ ecId: profile?.id }),
         getAdverseEventsApi(),
       ]);
 
@@ -52,7 +55,15 @@ export default function EthicsCommitteeDashboardPage() {
           )
       );
 
+      // Merge submissions and assigned studies, avoiding duplicates
+      // Submissions take precedence over assignments
+      const submissionStudyIds = new Set(submissionsData.map(s => s.study_id));
+      const uniqueAssignedStudies = assignedData.filter(
+        a => !submissionStudyIds.has(a.studies?.id)
+      );
+
       setStudySubmissions(submissionsData);
+      setAssignedStudies(uniqueAssignedStudies);
       setAeReports(pendingAeReports);
     } catch (err) {
       setError(err.message);
@@ -93,9 +104,11 @@ export default function EthicsCommitteeDashboardPage() {
   }
 
   const pendingStudySubmissions = studySubmissions.filter((s) => s.status === "pending");
+  const awaitingSubmissionStudies = assignedStudies.filter((s) => s.status === "awaiting_submission");
   const pendingAeReportsCount = aeReports.length;
 
   const hasPendingReviews = pendingStudySubmissions.length > 0 || pendingAeReportsCount > 0;
+  const hasAssignedStudies = awaitingSubmissionStudies.length > 0;
 
   return (
     <div className="min-h-screen bg-[#f4f8fb] text-[#16324f]">
@@ -168,7 +181,7 @@ export default function EthicsCommitteeDashboardPage() {
                             <StatusBadge status={submission.status} />
                             <button
                               type="button"
-                              onClick={() => navigate(`/ethics/submissions/${submission.id}`)}
+                              onClick={() => navigate(`/ethics/submissions/${submission.study_id}`)}
                               className="text-xs font-medium text-[#1d5edb] hover:underline"
                             >
                               Review →
@@ -242,13 +255,50 @@ export default function EthicsCommitteeDashboardPage() {
           )}
         </section>
 
+        {/* ── Assigned Studies (Awaiting Submission) ── */}
+        {hasAssignedStudies && (
+          <section className="mb-10">
+            <h2 className="mb-5 text-[20px] font-semibold tracking-[-0.02em] text-[#17243b]">
+              Assigned Studies — Awaiting Coordinator Submission
+            </h2>
+            <div className="rounded-[5px] border border-slate-200 bg-white shadow-[0_1px_3px_rgba(15,23,42,0.03)]">
+              <div className="divide-y divide-slate-100">
+                {awaitingSubmissionStudies.map((study) => (
+                  <div key={study.studies?.id} className="px-5 py-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-[#17243b]">
+                          {study.studies?.title || "Untitled Study"}
+                        </p>
+                        <p className="mt-1 text-xs text-slate-500">
+                          Phase: {study.studies?.phase || "Not specified"} · Status: {study.studies?.status || "Unknown"}
+                        </p>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-2">
+                        <StatusBadge status="awaiting_submission" />
+                        <button
+                          type="button"
+                          onClick={() => navigate(`/studies/${study.studies?.id}`)}
+                          className="text-xs font-medium text-[#1d5edb] hover:underline"
+                        >
+                          View details →
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
+
         {/* ── Recent Activity ── */}
         <section>
           <h2 className="mb-5 text-[20px] font-semibold tracking-[-0.02em] text-[#17243b]">
             Recent Activity
           </h2>
           <div className="rounded-[5px] border border-slate-200 bg-white shadow-[0_1px_3px_rgba(15,23,42,0.03)]">
-            {studySubmissions.length === 0 && aeReports.length === 0 ? (
+            {studySubmissions.length === 0 && assignedStudies.length === 0 && aeReports.length === 0 ? (
               <div className="p-6 text-center">
                 <p className="text-sm text-slate-500">No recent activity</p>
               </div>
@@ -277,6 +327,27 @@ export default function EthicsCommitteeDashboardPage() {
                           )}
                         </div>
                         <StatusBadge status={submission.status} />
+                      </div>
+                    </div>
+                  ))}
+                {/* Recent assigned studies (awaiting submission) */}
+                {assignedStudies
+                  .filter((s) => s.status === "awaiting_submission")
+                  .slice(0, 3)
+                  .map((study) => (
+                    <div key={study.studies?.id} className="px-5 py-4">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium text-slate-900">
+                            {study.studies?.title || "Untitled Study"}
+                          </p>
+                          <p className="mt-1 text-xs text-slate-500">
+                            Assigned {study.studies?.created_at
+                              ? new Date(study.studies.created_at).toLocaleDateString()
+                              : "—"}
+                          </p>
+                        </div>
+                        <StatusBadge status="awaiting_submission" />
                       </div>
                     </div>
                   ))}

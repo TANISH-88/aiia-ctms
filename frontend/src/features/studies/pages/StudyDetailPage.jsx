@@ -76,9 +76,13 @@ export function StudyDetailPage() {
         setSubmission(data);
 
         if (study.ethics_committee_id) {
-          setEthicsCommittee(
-            await getProfileByIdApi(study.ethics_committee_id),
-          );
+          try {
+            setEthicsCommittee(
+              await getProfileByIdApi(study.ethics_committee_id)
+            );
+          } catch {
+            setEthicsCommittee(null);
+          }
         }
 
         if (study.pi_id) {
@@ -116,18 +120,110 @@ export function StudyDetailPage() {
     };
   }, [study]);
 
+  // Maps DB study status enum values to human-readable labels.
+  const formatStudyStatus = (status) => {
+    const labels = {
+      protocol_draft: "Awaiting Coordinator Submission",
+      ec_approval_pending: "Pending Ethics Committee Review",
+      ec_approved: "EC Approved",
+      ctri_registered: "CTRI Registered",
+      enrolling: "Enrolling",
+      active: "Active",
+      closed: "Closed",
+      suspended: "Suspended",
+    };
+    return labels[status] ?? status?.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()) ?? "Unknown";
+  };
+
   const isAssignedCoordinator =
     currentUser?.role === "study_coordinator" &&
-    study?.sites?.some((site) => site.id === currentUser.site_id);
+    study?.study_assignments?.some((assignment) => 
+      assignment.profile_id === currentUser.id && assignment.role === "study_coordinator"
+    );
   const isPi = currentUser?.role === "principal_investigator";
   const backPath = currentUser?.role === "monitor" ? "/dashboard" : "/clinical-trials";
   const backLabel = currentUser?.role === "monitor" ? "Back to Dashboard" : "Back to Clinical Trials";
   const hasStudyAccess =
     currentUser?.role !== "study_coordinator" || isAssignedCoordinator;
-  const submissionStatus = submission?.status || "pending";
+  const submissionStatus = submission?.status || "awaiting_submission";
   const canSubmit =
     isAssignedCoordinator &&
-    ["pending", "rejected", "changes_requested"].includes(submissionStatus);
+    ["awaiting_submission", "pending", "rejected", "changes_requested"].includes(submissionStatus);
+  const isAssignedEc =
+    currentUser?.role === "ethics_committee" &&
+    study?.ec_id === currentUser.id;
+  const [resuming, setResuming] = useState(false);
+  const [resumeError, setResumeError] = useState(null);
+
+  // Get status guidance message based on current study status
+  const getStatusGuidance = () => {
+    switch (study.status) {
+      case "protocol_draft":
+        return {
+          message: "The study is in draft. The assigned Study Coordinator must submit it for Ethics Committee review.",
+          type: "info",
+        };
+      case "ec_approval_pending":
+        return {
+          message: "The study is awaiting Ethics Committee review and approval.",
+          type: "warning",
+        };
+      case "ec_approved":
+        return {
+          message: "The study has been approved by the Ethics Committee and can proceed according to the established workflow.",
+          type: "success",
+        };
+      case "ctri_registered":
+        return {
+          message: "The study is CTRI registered and active.",
+          type: "success",
+        };
+      case "enrolling":
+        return {
+          message: "The study is actively enrolling subjects.",
+          type: "success",
+        };
+      case "active":
+        return {
+          message: "The study is active and operations are in progress.",
+          type: "success",
+        };
+      case "suspended":
+        return {
+          message: "The study is suspended. An authorized Ethics Committee member may resume the study.",
+          type: "error",
+        };
+      case "closed":
+        return {
+          message: "The study is closed. No further lifecycle actions are available.",
+          type: "neutral",
+        };
+      default:
+        return {
+          message: `Study status: ${formatStudyStatus(study.status)}`,
+          type: "info",
+        };
+    }
+  };
+
+  const handleResumeStudy = async () => {
+    try {
+      setResuming(true);
+      setResumeError(null);
+      const { data, error } = await supabase.rpc("resume_suspended_study", {
+        p_study_id: study.id,
+      });
+      if (error) {
+        throw new Error(error.message);
+      }
+      const refreshedStudy = await getStudyApi(studyId);
+      setStudy(refreshedStudy);
+    } catch (err) {
+      setResumeError(err.message);
+    } finally {
+      setResuming(false);
+    }
+  };
 
   const handleSubmitToEthics = async (event) => {
     event.preventDefault();
@@ -164,8 +260,15 @@ export function StudyDetailPage() {
   const handleAddSubject = async (event) => {
     event.preventDefault();
 
-    if (study.status === "suspended") {
-      setSubjectError("This study is suspended. Subject management is disabled.");
+    // Subjects can only be enrolled after Ethics Committee approval
+    const approvedStatuses = ["ec_approved", "ctri_registered", "enrolling", "active"];
+    if (!approvedStatuses.includes(study.status)) {
+      setSubjectError(
+        study.status === "suspended"
+          ? "This study is suspended. Subject management is disabled."
+          : "Subjects can only be enrolled after Ethics Committee approval. Current status: " +
+            formatStudyStatus(study.status),
+      );
       return;
     }
 
@@ -291,6 +394,50 @@ export function StudyDetailPage() {
           <p className="mt-2 text-sm text-slate-500">Study ID: {study.id}</p>
         </div>
 
+        {/* Status Guidance Banner */}
+        <div
+          className={`mt-6 rounded-[5px] border p-4 ${
+            getStatusGuidance().type === "error"
+              ? "border-red-200 bg-red-50"
+              : getStatusGuidance().type === "warning"
+              ? "border-amber-200 bg-amber-50"
+              : getStatusGuidance().type === "success"
+              ? "border-green-200 bg-green-50"
+              : "border-slate-200 bg-slate-50"
+          }`}
+        >
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="flex-1">
+              <p
+                className={`text-sm ${
+                  getStatusGuidance().type === "error"
+                    ? "text-red-800"
+                    : getStatusGuidance().type === "warning"
+                    ? "text-amber-800"
+                    : getStatusGuidance().type === "success"
+                    ? "text-green-800"
+                    : "text-slate-700"
+                }`}
+              >
+                {getStatusGuidance().message}
+              </p>
+            </div>
+            {study.status === "suspended" && isAssignedEc && (
+              <button
+                type="button"
+                onClick={handleResumeStudy}
+                disabled={resuming}
+                className="rounded-lg bg-[#1d5edb] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#174ec0] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {resuming ? "Resuming..." : "Resume Study"}
+              </button>
+            )}
+          </div>
+          {resumeError && (
+            <p className="mt-3 text-sm text-red-700">{resumeError}</p>
+          )}
+        </div>
+
         <div className="mt-8 grid items-start gap-6 lg:grid-cols-2">
           {/* Study Details */}
           <div className="rounded-[5px] border border-slate-200 bg-white p-6 shadow-[0_1px_3px_rgba(15,23,42,0.03)]">
@@ -300,7 +447,7 @@ export function StudyDetailPage() {
             <dl className="grid gap-x-6 gap-y-4 text-sm sm:grid-cols-2">
               <div>
                 <dt className="font-medium text-slate-700">Status</dt>
-                <dd className="mt-1 text-slate-600">{study.status}</dd>
+                <dd className="mt-1 font-medium text-slate-900">{formatStudyStatus(study.status)}</dd>
               </div>
               <div>
                 <dt className="font-medium text-slate-700">Phase</dt>
@@ -622,7 +769,7 @@ export function StudyDetailPage() {
                 }}
                 className="rounded-lg bg-[#1d5edb] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#174ec0]"
               >
-                {submissionStatus === "pending" ? "Submit to Ethics Committee" : "Resubmit to Ethics Committee"}
+                {submissionStatus === "awaiting_submission" || submissionStatus === "pending" ? "Submit to Ethics Committee" : "Resubmit to Ethics Committee"}
               </button>
             )}
           </div>

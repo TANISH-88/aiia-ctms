@@ -50,13 +50,15 @@ export default function Trial() {
     }
   };
 
-  const formatStatus = (status) =>
-    status
+  const formatStatus = (status) => {
+    if (status === "protocol_draft") return "Pending Ethics Review";
+    return status
       ? status
           .split("_")
           .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
           .join(" ")
       : "Unknown";
+  };
 
   const filteredStudies = studies.filter((study) => {
     const search = searchTerm.trim().toLowerCase();
