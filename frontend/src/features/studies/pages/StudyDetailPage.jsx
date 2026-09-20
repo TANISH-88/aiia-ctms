@@ -36,6 +36,28 @@ export function StudyDetailPage() {
   const [submittingStudy, setSubmittingStudy] = useState(false);
   const [showFhirModal, setShowFhirModal] = useState(false);
   const [fhirBundle, setFhirBundle] = useState(null);
+  
+  // Progress Report State
+  const [showProgressForm, setShowProgressForm] = useState(false);
+  const [progressStartDate, setProgressStartDate] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 7);
+    return d.toISOString().split("T")[0];
+  });
+  const [progressEndDate, setProgressEndDate] = useState(() => {
+    return new Date().toISOString().split("T")[0];
+  });
+  const [progressSummary, setProgressSummary] = useState("");
+  const [progressEnrollment, setProgressEnrollment] = useState("");
+  const [progressIssues, setProgressIssues] = useState("");
+  const [progressError, setProgressError] = useState(null);
+  const [progressSuccess, setProgressSuccess] = useState(false);
+  const [submittingProgress, setSubmittingProgress] = useState(false);
+  
+  const [progressReports, setProgressReports] = useState([]);
+  const [loadingReports, setLoadingReports] = useState(true);
+  const [reportsError, setReportsError] = useState(null);
+
   const {
     user: currentUser,
     loading: userLoading,
@@ -118,6 +140,28 @@ export function StudyDetailPage() {
     return () => {
       supabase.removeChannel(channel);
     };
+  }, [study]);
+
+  const fetchProgressReports = async () => {
+    if (!study) return;
+    try {
+      setLoadingReports(true);
+      const { data: reports, error: fetchErr } = await supabase
+        .from("study_progress_reports")
+        .select("*, profiles(full_name)")
+        .eq("study_id", study.id)
+        .order("created_at", { ascending: false });
+      if (fetchErr) throw new Error(fetchErr.message);
+      setProgressReports(reports || []);
+    } catch (err) {
+      setReportsError(err.message);
+    } finally {
+      setLoadingReports(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProgressReports();
   }, [study]);
 
   // Maps DB study status enum values to human-readable labels.
@@ -308,6 +352,57 @@ export function StudyDetailPage() {
       setSubjectError(err.message);
     } finally {
       setSavingSubject(false);
+    }
+  };
+
+  const handleSubmitProgress = async (e) => {
+    e.preventDefault();
+    if (!progressSummary.trim()) {
+      setProgressError("Summary is required.");
+      return;
+    }
+    
+    setSubmittingProgress(true);
+    setProgressError(null);
+    setProgressSuccess(false);
+
+    try {
+      const { error: insertError } = await supabase
+        .from("study_progress_reports")
+        .insert({
+          study_id: study.id,
+          submitted_by: currentUser.id,
+          report_period_start: progressStartDate,
+          report_period_end: progressEndDate,
+          summary: progressSummary.trim(),
+          enrollment_update: progressEnrollment.trim() || null,
+          issues_noted: progressIssues.trim() || null
+        });
+
+      if (insertError) {
+        if (insertError.code === "42501" || insertError.message.toLowerCase().includes("row-level security")) {
+           throw new Error("You are not assigned as coordinator for this study.");
+        }
+        throw new Error(insertError.message);
+      }
+
+      setProgressSuccess(true);
+      
+      const d = new Date();
+      setProgressEndDate(d.toISOString().split("T")[0]);
+      d.setDate(d.getDate() - 7);
+      setProgressStartDate(d.toISOString().split("T")[0]);
+      
+      setProgressSummary("");
+      setProgressEnrollment("");
+      setProgressIssues("");
+      
+      fetchProgressReports();
+      
+    } catch (err) {
+      setProgressError(err.message);
+    } finally {
+      setSubmittingProgress(false);
     }
   };
 
@@ -816,17 +911,178 @@ export function StudyDetailPage() {
           )}
         </section>
 
-        {/* Adverse-event action — Coordinator only; PI has read-only access */}
+        {/* Progress Reports (Read-only list for anyone with study access) */}
+        <section className="mt-6 rounded-[5px] border border-slate-200 bg-white p-6 shadow-[0_1px_3px_rgba(15,23,42,0.03)]">
+          <h2 className="mb-4 text-lg font-semibold text-slate-900">Progress Reports</h2>
+          
+          {loadingReports ? (
+            <div className="h-20 animate-pulse rounded bg-slate-100" />
+          ) : reportsError ? (
+            <p className="rounded-[5px] border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+              {reportsError}
+            </p>
+          ) : progressReports.length === 0 ? (
+            <p className="text-sm text-slate-500">No progress reports submitted yet.</p>
+          ) : (
+            <div className="space-y-4">
+              {progressReports.map((report) => (
+                <div key={report.id} className="rounded-[5px] border border-slate-200 bg-slate-50 p-4">
+                  <div className="mb-3 flex flex-wrap justify-between gap-2 border-b border-slate-200 pb-2">
+                    <p className="text-xs font-semibold text-slate-700">
+                      {report.report_period_start} → {report.report_period_end}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      Submitted by <span className="font-medium text-slate-700">{report.profiles?.full_name || "Unknown"}</span> on {new Date(report.created_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                  
+                  <div className="whitespace-pre-wrap text-sm text-slate-800">{report.summary}</div>
+                  
+                  {report.enrollment_update && (
+                    <div className="mt-3">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-700">Enrollment Update</p>
+                      <p className="mt-1 whitespace-pre-wrap text-sm text-slate-600">{report.enrollment_update}</p>
+                    </div>
+                  )}
+                  
+                  {report.issues_noted && (
+                    <div className="mt-3">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-red-800">Issues Noted</p>
+                      <p className="mt-1 whitespace-pre-wrap text-sm text-red-700">{report.issues_noted}</p>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* Adverse-event and Progress Report actions — Coordinator only; PI has read-only access */}
         {isAssignedCoordinator && (
-          <div className="mt-8">
-            <button
-              type="button"
-              disabled={study.status === "suspended"}
-              onClick={() => navigate(`/studies/${studyId}/report-ae`)}
-              className="rounded-lg bg-[#1d5edb] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#174ec0] disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              Report Adverse Event
-            </button>
+          <div className="mt-8 space-y-4">
+            <div className="flex flex-wrap gap-4">
+              <button
+                type="button"
+                disabled={study.status === "suspended"}
+                onClick={() => navigate(`/studies/${studyId}/report-ae`)}
+                className="rounded-lg bg-[#1d5edb] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#174ec0] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Report Adverse Event
+              </button>
+              <button
+                type="button"
+                disabled={study.status === "suspended"}
+                onClick={() => {
+                  setProgressError(null);
+                  setProgressSuccess(false);
+                  setShowProgressForm((prev) => !prev);
+                }}
+                className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {showProgressForm ? "Cancel Progress Report" : "Submit Progress Report"}
+              </button>
+            </div>
+
+            {showProgressForm && (
+              <form
+                onSubmit={handleSubmitProgress}
+                className="max-w-2xl rounded-[5px] border border-slate-200 bg-white p-5 shadow-[0_1px_3px_rgba(15,23,42,0.03)]"
+              >
+                <h3 className="text-sm font-semibold text-slate-900">Study Progress Report</h3>
+                <p className="mt-1 text-xs text-slate-500">
+                  Submit a routine update on study activities, enrollment, and noted issues.
+                </p>
+
+                {progressSuccess && (
+                  <div className="mt-4 rounded-[5px] border border-green-200 bg-green-50 p-3 text-sm text-green-800">
+                    Progress report submitted successfully!
+                  </div>
+                )}
+
+                {progressError && (
+                  <div className="mt-4 rounded-[5px] border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+                    {progressError}
+                  </div>
+                )}
+
+                <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label htmlFor="progressStartDate" className="block text-xs font-medium text-slate-700">
+                      Report Period Start
+                    </label>
+                    <input
+                      id="progressStartDate"
+                      type="date"
+                      value={progressStartDate}
+                      onChange={(e) => setProgressStartDate(e.target.value)}
+                      required
+                      className="mt-1 w-full rounded-[5px] border border-slate-300 px-3 py-2 text-sm focus:border-[#1d5edb] focus:outline-none focus:ring-1 focus:ring-[#1d5edb]"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="progressEndDate" className="block text-xs font-medium text-slate-700">
+                      Report Period End
+                    </label>
+                    <input
+                      id="progressEndDate"
+                      type="date"
+                      value={progressEndDate}
+                      onChange={(e) => setProgressEndDate(e.target.value)}
+                      required
+                      className="mt-1 w-full rounded-[5px] border border-slate-300 px-3 py-2 text-sm focus:border-[#1d5edb] focus:outline-none focus:ring-1 focus:ring-[#1d5edb]"
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-4">
+                  <label htmlFor="progressSummary" className="block text-xs font-medium text-slate-700">
+                    Summary <span className="font-normal text-red-500">*</span>
+                  </label>
+                  <textarea
+                    id="progressSummary"
+                    value={progressSummary}
+                    onChange={(e) => setProgressSummary(e.target.value)}
+                    required
+                    rows={3}
+                    className="mt-1 w-full rounded-[5px] border border-slate-300 px-3 py-2 text-sm focus:border-[#1d5edb] focus:outline-none focus:ring-1 focus:ring-[#1d5edb]"
+                  />
+                </div>
+
+                <div className="mt-4">
+                  <label htmlFor="progressEnrollment" className="block text-xs font-medium text-slate-700">
+                    Enrollment Update <span className="font-normal text-slate-400">(optional)</span>
+                  </label>
+                  <textarea
+                    id="progressEnrollment"
+                    value={progressEnrollment}
+                    onChange={(e) => setProgressEnrollment(e.target.value)}
+                    rows={2}
+                    className="mt-1 w-full rounded-[5px] border border-slate-300 px-3 py-2 text-sm focus:border-[#1d5edb] focus:outline-none focus:ring-1 focus:ring-[#1d5edb]"
+                  />
+                </div>
+
+                <div className="mt-4">
+                  <label htmlFor="progressIssues" className="block text-xs font-medium text-slate-700">
+                    Issues Noted <span className="font-normal text-slate-400">(optional)</span>
+                  </label>
+                  <textarea
+                    id="progressIssues"
+                    value={progressIssues}
+                    onChange={(e) => setProgressIssues(e.target.value)}
+                    rows={2}
+                    className="mt-1 w-full rounded-[5px] border border-slate-300 px-3 py-2 text-sm focus:border-[#1d5edb] focus:outline-none focus:ring-1 focus:ring-[#1d5edb]"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={submittingProgress}
+                  className="mt-5 rounded-lg bg-[#1d5edb] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#174ec0] disabled:opacity-50"
+                >
+                  {submittingProgress ? "Submitting..." : "Submit Report"}
+                </button>
+              </form>
+            )}
           </div>
         )}
         {isPi && (
