@@ -7,7 +7,7 @@ import { supabase } from "../../../api/supabase";
 export const getStudyApi = async (study_id) => {
   const { data: study, error: studyError } = await supabase
     .from("studies")
-    .select("*")
+    .select("*, organizations(id, name)")
     .eq("id", study_id)
     .single();
 
@@ -60,7 +60,7 @@ export const getStudyApi = async (study_id) => {
  * Get all studies (for listing)
  */
 export const getStudiesApi = async () => {
-  const { data, error } = await supabase.from("studies").select("*");
+  const { data, error } = await supabase.from("studies").select("*, organizations(id, name)");
 
   if (error) {
     throw new Error(error.message);
@@ -134,6 +134,7 @@ export const createStudyApi = async ({
   startDate,
   endDate,
   ecId,
+  organizationId,
 }) => {
   const trimmedTitle = title?.trim();
   if (!trimmedTitle) {
@@ -156,6 +157,7 @@ export const createStudyApi = async ({
   if (startDate) payload.start_date = startDate;
   if (endDate) payload.end_date = endDate;
   if (ecId) payload.ec_id = ecId;
+  if (organizationId) payload.organization_id = organizationId;
 
   const { data, error } = await supabase
     .from("studies")
@@ -168,4 +170,62 @@ export const createStudyApi = async ({
   }
 
   return data;
+};
+
+export const getOrganizationsApi = async () => {
+  const { data, error } = await supabase
+    .from("organizations")
+    .select("id, name")
+    .order("name", { ascending: true });
+  if (error) throw new Error(error.message);
+  return data || [];
+};
+
+export const getOrCreateOrganizationApi = async (name) => {
+  const { data, error } = await supabase.rpc(
+    "get_or_create_organization",
+    { p_name: name }
+  );
+  if (error) throw new Error(error.message);
+  return Array.isArray(data) ? data[0] : data;
+};
+
+/**
+ * Admin-only: bulk-insert initial sites for a newly created study.
+ *
+ * @param {string} studyId — UUID of the study just created
+ * @param {Array<{name: string, location?: string}>} sites — validated site rows
+ * @returns {Array} The inserted site rows (including generated ids)
+ */
+export const createSitesApi = async (studyId, sites) => {
+  const payload = sites.map((s) => ({
+    study_id: studyId,
+    name: s.name.trim(),
+    ...(s.location?.trim() ? { location: s.location.trim() } : {}),
+  }));
+
+  const { data, error } = await supabase
+    .from("sites")
+    .insert(payload)
+    .select();
+
+  if (error) throw new Error(error.message);
+  return data || [];
+};
+
+/**
+ * Admin-only: delete a draft study safely.
+ *
+ * @param {string} studyId — UUID of the study to delete
+ * @returns {void}
+ */
+export const deleteStudyApi = async (studyId) => {
+  const { error } = await supabase
+    .from("studies")
+    .delete()
+    .eq("id", studyId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
 };

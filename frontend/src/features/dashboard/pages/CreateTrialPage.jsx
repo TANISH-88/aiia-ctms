@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { createStudyApi } from "../../studies/api/studiesAPI";
+import { createStudyApi, getOrCreateOrganizationApi, createSitesApi } from "../../studies/api/studiesAPI";
 import { supabase } from "../../../api/supabase";
+import OrgCombobox from "../../../shared/OrgCombobox";
 
 // Phase options matching the study_status context used in the app
 const PHASE_OPTIONS = [
@@ -78,6 +79,13 @@ function StudyForm({ onCreated }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  const [orgName, setOrgName] = useState("");
+  const [orgError, setOrgError] = useState(null);
+
+  // Sites — at least one required
+  const [sites, setSites] = useState([{ name: "", location: "" }]);
+  const [sitesError, setSitesError] = useState(null);
+
   // Load existing Ethics Committee accounts (requires profiles_admin_read RLS policy)
   useEffect(() => {
     const loadEcAccounts = async () => {
@@ -111,10 +119,27 @@ function StudyForm({ onCreated }) {
       return;
     }
 
+    const trimmedOrg = orgName.trim();
+    if (!trimmedOrg) {
+      setOrgError("Organization name is required.");
+      return;
+    }
+    setOrgError(null);
+
+    const validSites = sites.filter((s) => s.name.trim());
+    if (validSites.length === 0) {
+      setSitesError("At least one site name is required.");
+      return;
+    }
+    setSitesError(null);
+
     try {
       setLoading(true);
 
-      // 1. Create the study with ec_id set
+      // 1. Resolve org via RPC (admin-only; create-or-return existing)
+      const org = await getOrCreateOrganizationApi(trimmedOrg);
+
+      // 2. Create the study with ec_id and organization_id set
       const study = await createStudyApi({
         title,
         targetEnrollment,
@@ -123,7 +148,22 @@ function StudyForm({ onCreated }) {
         startDate,
         endDate,
         ecId,
+        organizationId: org.id,
       });
+
+      // 3. Insert initial sites. Non-atomic — study already exists.
+      //    On failure, inform admin clearly and preserve the created study.
+      let createdSites = [];
+      try {
+        createdSites = await createSitesApi(study.id, validSites);
+      } catch (siteErr) {
+        setError(
+          `Study was created (ID: ${study.id}) but sites could not be saved: ${siteErr.message}. ` +
+          `Please contact database support to manually assign sites.`
+        );
+        onCreated({ ...study, sites: [] });
+        return;
+      }
 
       // 2. Insert study_assignments row for the EC
       //    (ec_id in studies is for submission routing; study_assignments is for access/visibility)
@@ -140,7 +180,7 @@ function StudyForm({ onCreated }) {
         console.warn("EC study_assignment insert failed:", assignError.message);
       }
 
-      onCreated(study);
+      onCreated({ ...study, sites: createdSites });
     } catch (err) {
       setError(err.message);
     } finally {
@@ -183,6 +223,13 @@ function StudyForm({ onCreated }) {
             </p>
           )}
         </div>
+
+        <OrgCombobox
+          value={orgName}
+          onChange={setOrgName}
+          disabled={loading}
+          error={orgError}
+        />
 
         {/* Title — required */}
         <div className="sm:col-span-2">
@@ -302,6 +349,83 @@ function StudyForm({ onCreated }) {
             disabled={loading}
           />
         </div>
+      </div>
+
+      {/* ── Sites ── */}
+      <div className="mt-6 border-t border-[#dfe7ef] pt-6">
+        <div className="mb-3 flex items-center justify-between">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[#5d7187]">
+            Study Sites <span className="text-red-500">*</span>
+          </p>
+          <button
+            type="button"
+            disabled={loading}
+            onClick={() => setSites((prev) => [...prev, { name: "", location: "" }])}
+            className="text-xs font-medium text-[#1f74d8] hover:text-[#145db5] disabled:opacity-50"
+          >
+            + Add another site
+          </button>
+        </div>
+
+        <div className="space-y-3">
+          {sites.map((site, idx) => (
+            <div key={idx} className="flex min-w-0 flex-col gap-2 sm:flex-row sm:gap-3">
+              <div className="flex-1">
+                <label htmlFor={`ct-site-name-${idx}`} className="sr-only">
+                  Site {idx + 1} Name
+                </label>
+                <input
+                  id={`ct-site-name-${idx}`}
+                  type="text"
+                  placeholder={`Site ${idx + 1} name (required)`}
+                  value={site.name}
+                  onChange={(e) => {
+                    const updated = [...sites];
+                    updated[idx] = { ...updated[idx], name: e.target.value };
+                    setSites(updated);
+                  }}
+                  disabled={loading}
+                  className="h-10 w-full rounded-[5px] border border-[#cfdbe7] bg-[#f8fafc] px-3 text-sm text-[#16324f] outline-none transition placeholder:text-[#8a9bad] focus:border-[#1f74d8] focus:bg-white focus:ring-2 focus:ring-[#dfeeff] disabled:opacity-60"
+                />
+              </div>
+              <div className="flex flex-1 items-center gap-2">
+                <div className="flex-1">
+                  <label htmlFor={`ct-site-loc-${idx}`} className="sr-only">
+                    Site {idx + 1} Location
+                  </label>
+                  <input
+                    id={`ct-site-loc-${idx}`}
+                    type="text"
+                    placeholder="Location (optional)"
+                    value={site.location}
+                    onChange={(e) => {
+                      const updated = [...sites];
+                      updated[idx] = { ...updated[idx], location: e.target.value };
+                      setSites(updated);
+                    }}
+                    disabled={loading}
+                    className="h-10 w-full rounded-[5px] border border-[#cfdbe7] bg-[#f8fafc] px-3 text-sm text-[#16324f] outline-none transition placeholder:text-[#8a9bad] focus:border-[#1f74d8] focus:bg-white focus:ring-2 focus:ring-[#dfeeff] disabled:opacity-60"
+                  />
+                </div>
+                {sites.length > 1 && (
+                  <button
+                    type="button"
+                    disabled={loading}
+                    aria-label={`Remove site ${idx + 1}`}
+                    onClick={() => setSites((prev) => prev.filter((_, i) => i !== idx))}
+                    className="shrink-0 text-[#b44536] hover:text-[#8c3429] disabled:opacity-50"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {sitesError && (
+          <p className="mt-2 text-[11px] text-[#b44536]">{sitesError}</p>
+        )}
       </div>
 
       {error && (
@@ -581,7 +705,15 @@ export default function CreateTrialPage() {
                     Created
                   </span>
                 </div>
-                <dl className="mt-4 grid grid-cols-2 gap-3 text-xs sm:grid-cols-4">
+                <dl className="mt-4 grid grid-cols-2 gap-3 text-xs sm:grid-cols-6">
+                  <div>
+                    <dt className="uppercase tracking-[0.1em] text-[#8a9bad]">Organization</dt>
+                    <dd className="mt-1 text-[#5d7187]">{createdStudy.organizations?.name || "—"}</dd>
+                  </div>
+                  <div>
+                    <dt className="uppercase tracking-[0.1em] text-[#8a9bad]">Sites</dt>
+                    <dd className="mt-1 text-[#5d7187]">{createdStudy.sites?.length || 0}</dd>
+                  </div>
                   <div>
                     <dt className="uppercase tracking-[0.1em] text-[#8a9bad]">Phase</dt>
                     <dd className="mt-1 text-[#5d7187]">{createdStudy.phase || "—"}</dd>

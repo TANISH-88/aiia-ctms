@@ -57,7 +57,8 @@ export default function Study() {
 			!search ||
 			study.title?.toLowerCase().includes(search) ||
 			study.ctri_number?.toLowerCase().includes(search) ||
-			study.phase?.toLowerCase().includes(search);
+			study.phase?.toLowerCase().includes(search) ||
+			study.organizations?.name?.toLowerCase().includes(search);
 		const matchesStatus = statusFilter === "all" || study.status === statusFilter;
 
 		return matchesSearch && matchesStatus;
@@ -124,7 +125,7 @@ export default function Study() {
 									type="search"
 									value={searchTerm}
 									onChange={(event) => setSearchTerm(event.target.value)}
-									placeholder="Search title, phase, or CTRI"
+									placeholder="Search title, org, phase, CTRI"
 									className="h-10 w-full rounded-[5px] border border-[#cfdbe7] bg-white px-3 text-xs text-[#16324f] outline-none transition placeholder:text-[#8a9bad] focus:border-[#1f74d8] focus:ring-2 focus:ring-[#dfeeff] sm:w-60"
 								/>
 								<label className="sr-only" htmlFor="study-status">Filter by status</label>
@@ -146,7 +147,7 @@ export default function Study() {
 							<table className="w-full min-w-190 border-collapse text-left">
 								<thead className="bg-[#fbfcfe]">
 									<tr className="border-b border-[#dfe7ef]">
-										{["Title", "Status", "Phase", "CTRI Number", "Target Enrollment", "Actions"].map((heading) => (
+										{["Title", "Organization", "Status", "Phase", "CTRI Number", "Target Enrollment", "Actions"].map((heading) => (
 											<th key={heading} className="px-5 py-4 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#5d7187]">{heading}</th>
 										))}
 									</tr>
@@ -155,6 +156,7 @@ export default function Study() {
 									{filteredStudies.map((study) => (
 										<tr key={study.id} className="border-b border-[#edf1f5] transition-colors last:border-b-0 hover:bg-[#f8fbfe]">
 											<td className="px-5 py-4 text-sm font-medium text-[#16324f]">{study.title}</td>
+											<td className="px-5 py-4 text-sm text-[#5d7187]">{study.organizations?.name || "—"}</td>
 											<td className="px-5 py-4 text-sm"><span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${getStatusColor(study.status)}`}>{formatValue(study.status)}</span></td>
 											<td className="px-5 py-4 text-sm text-[#5d7187]">{study.phase || "Not specified"}</td>
 											<td className="px-5 py-4 font-mono text-xs text-[#5d7187]">{study.ctri_number || "Not registered"}</td>
@@ -178,6 +180,7 @@ export default function Study() {
 										<span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${getStatusColor(study.status)}`}>{formatValue(study.status)}</span>
 									</div>
 									<dl className="mt-4 grid grid-cols-2 gap-3 text-xs">
+										<div><dt className="uppercase tracking-[0.12em] text-[#8a9bad]">Organization</dt><dd className="mt-1 text-[#5d7187]">{study.organizations?.name || "—"}</dd></div>
 										<div><dt className="uppercase tracking-[0.12em] text-[#8a9bad]">Phase</dt><dd className="mt-1 text-[#5d7187]">{study.phase || "Not specified"}</dd></div>
 										<div><dt className="uppercase tracking-[0.12em] text-[#8a9bad]">Target enrollment</dt><dd className="mt-1 text-[#5d7187]">{study.target_enrollment}</dd></div>
 									</dl>

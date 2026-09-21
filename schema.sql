@@ -746,3 +746,24 @@ grant execute on function public.resume_suspended_study(uuid) to authenticated;
 -- ---------------------------------------------------------
 
 notify pgrst, 'reload schema';
+
+-- =========================================================
+-- 2026-09-21: Organization Feature Migration (DOCUMENTATION)
+-- =========================================================
+-- See organization_feature_migration.sql for the full executable script.
+--
+-- NEW TABLE: organizations
+--   id uuid pk
+--   name text not null (preserves display casing)
+--   created_at timestamptz
+--   UNIQUE INDEX on lower(name) enforces case-insensitive deduplication
+--   RLS: organizations_read (all authenticated)
+--   Trigger: trg_audit_organizations (after insert/update/delete)
+--
+-- MODIFIED TABLE: studies
+--   organization_id uuid references organizations(id) (nullable)
+--
+-- NEW RPC: get_or_create_organization(p_name text)
+--   SECURITY DEFINER, admin-only.
+--   Returns organizations row.
+-- =========================================================

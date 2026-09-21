@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { getStudyApi } from "../api/studiesAPI.js";
+import { getStudyApi, deleteStudyApi } from "../api/studiesAPI.js";
 import { supabase } from "../../../api/supabase";
 import { useUser } from "../../user/hooks/useUser";
 import { getProfileByIdApi } from "../../user/api/userAPI";
@@ -406,6 +406,25 @@ export function StudyDetailPage() {
     }
   };
 
+  const [deletingStudy, setDeletingStudy] = useState(false);
+  const [deleteError, setDeleteError] = useState(null);
+
+  const handleDeleteDraftStudy = async () => {
+    if (!window.confirm("Are you sure you want to permanently delete this draft study? This action cannot be undone.")) {
+      return;
+    }
+
+    try {
+      setDeletingStudy(true);
+      setDeleteError(null);
+      await deleteStudyApi(study.id);
+      navigate("/dashboard", { replace: true });
+    } catch (err) {
+      setDeleteError(err.message);
+      setDeletingStudy(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#f4f8fb] px-5 py-8 sm:px-8 lg:px-10">
@@ -486,7 +505,22 @@ export function StudyDetailPage() {
           <h1 className="mt-2 text-2xl font-semibold tracking-[-0.02em] text-[#17243b]">
             {study.title}
           </h1>
-          <p className="mt-2 text-sm text-slate-500">Study ID: {study.id}</p>
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-4">
+            <p className="text-sm text-slate-500">Study ID: {study.id}</p>
+            {currentUser?.role === "admin" && study.status === "protocol_draft" && (
+              <button
+                type="button"
+                onClick={handleDeleteDraftStudy}
+                disabled={deletingStudy}
+                className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-50"
+              >
+                {deletingStudy ? "Deleting..." : "Delete Draft Study"}
+              </button>
+            )}
+          </div>
+          {deleteError && (
+            <p className="mt-3 text-sm font-medium text-red-600">{deleteError}</p>
+          )}
         </div>
 
         {/* Status Guidance Banner */}
@@ -566,6 +600,12 @@ export function StudyDetailPage() {
                 {study.ctri_number && (
                   <dd className="mt-1 text-xs text-slate-400">Last synced: 3 hours ago</dd>
                 )}
+              </div>
+              <div className="sm:col-span-2">
+                <dt className="font-medium text-slate-700">Organization</dt>
+                <dd className="mt-1 text-slate-600">
+                  {study.organizations?.name ?? "Not specified"}
+                </dd>
               </div>
               <div>
                 <dt className="font-medium text-slate-700">Principal Investigator</dt>
